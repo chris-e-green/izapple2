@@ -196,7 +196,7 @@ func (a *Apple2) setProfilingMode(value string) {
 	case "block":
 		a.profileMode = profile.BlockProfile
 	default:
-		// do nothing
+		a.profileMode = profile.CPUProfile
 	}
 }
 
