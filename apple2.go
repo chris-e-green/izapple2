@@ -2,6 +2,7 @@ package izapple2
 
 import (
 	"fmt"
+	"github.com/pkg/profile"
 	"sync/atomic"
 	"time"
 
@@ -30,6 +31,7 @@ type Apple2 struct {
 	forceCaps            bool
 	tracers              []executionTracer
 	removableMediaDrives []drive
+	profileMode          func(p *profile.Profile)
 }
 
 type executionTracer interface {
@@ -181,6 +183,25 @@ func (a *Apple2) setProfiling(value bool) {
 // IsProfiling returns true when profiling
 func (a *Apple2) IsProfiling() bool {
 	return a.profile
+}
+
+func (a *Apple2) setProfilingMode(value string) {
+	switch value {
+	case "cpu":
+		a.profileMode = profile.CPUProfile
+	case "mem":
+		a.profileMode = profile.MemProfile
+	case "mutex":
+		a.profileMode = profile.MutexProfile
+	case "block":
+		a.profileMode = profile.BlockProfile
+	default:
+		// do nothing
+	}
+}
+
+func (a *Apple2) ProfilingMode() func(p *profile.Profile) {
+	return a.profileMode
 }
 
 // SetForceCaps allows the caps state to be toggled at runtime

@@ -152,10 +152,10 @@ func MainApple() *Apple2 {
 		"model",
 		"2enh",
 		"set base model. Models available 2plus, 2e, 2enh, base64a")
-	profile := flag.Bool(
+	profile := flag.String(
 		"profile",
-		false,
-		"generate profile trace to analyse with pprof")
+		"",
+		"generate profile trace to analyse with pprof. Profile types are cpu, mem, mutex, block")
 	traceMLI := flag.Bool(
 		"traceMLI",
 		false,
@@ -211,7 +211,10 @@ func MainApple() *Apple2 {
 	a.io.setTrace(*traceSS)
 	a.io.setTraceRegistrations(*traceSSReg)
 	a.io.setPanicNotImplemented(*panicSS)
-	a.setProfiling(*profile)
+	if *profile != "" {
+		a.setProfiling(true)
+		a.setProfilingMode(*profile)
+	}
 	a.SetForceCaps(*forceCaps)
 	if *traceMLI {
 		a.addTracer(newTraceProDOS(a))
