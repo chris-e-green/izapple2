@@ -18,7 +18,7 @@ func main() {
 		if a.IsProfiling() {
 			// See the log with:
 			//    go tool pprof --pdf ~/go/bin/izapple2sdl /tmp/profile329536248/cpu.pprof > profile.pdf
-			defer profile.Start().Stop()
+			defer profile.Start(a.ProfilingMode()).Stop()
 		}
 
 		sdlRun(a)
