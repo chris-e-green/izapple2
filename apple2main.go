@@ -155,7 +155,7 @@ func MainApple() *Apple2 {
 	profile := flag.String(
 		"profile",
 		"",
-		"generate profile trace to analyse with pprof. Profile types are cpu, mem, mutex, block")
+		"generate profile trace to analyse with pprof. Profile types are cpu, mem [heap], mema [allocs], mutex, block, thread, trace, goroutine")
 	traceMLI := flag.Bool(
 		"traceMLI",
 		false,

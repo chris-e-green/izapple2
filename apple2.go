@@ -191,10 +191,18 @@ func (a *Apple2) setProfilingMode(value string) {
 		a.profileMode = profile.CPUProfile
 	case "mem":
 		a.profileMode = profile.MemProfile
+	case "mema":
+		a.profileMode = profile.MemProfileAllocs
 	case "mutex":
 		a.profileMode = profile.MutexProfile
 	case "block":
 		a.profileMode = profile.BlockProfile
+	case "thread":
+		a.profileMode = profile.ThreadcreationProfile
+	case "trace":
+		a.profileMode = profile.TraceProfile
+	case "goroutine":
+		a.profileMode = profile.GoroutineProfile
 	default:
 		a.profileMode = profile.CPUProfile
 	}
