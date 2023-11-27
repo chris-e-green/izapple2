@@ -18,7 +18,15 @@ const (
 	numberOfSectors  = 16
 	bytesPerSector   = 256
 	bytesPerTrack    = numberOfSectors * bytesPerSector
-	nibBytesPerTrack = 6656
+	nibBytesPerTrack = numberOfSectors*(primaryBufferSize+
+		secondaryBufferSize+
+		gap2Len+
+		gap3Len+
+		3*4+ // address prolog, data prolog, 2 epilogs
+		8+ // 4 address fields
+		1) + gap1Len // data checksum
+
+	//nibBytesPerTrack = 6656
 	nibImageSize     = numberOfTracks * nibBytesPerTrack
 	dskImageSize     = numberOfTracks * numberOfSectors * bytesPerSector
 	defaultVolumeTag = 254
@@ -55,7 +63,7 @@ func isFileDsk(data []uint8) bool {
 func newFileDsk(data []uint8, filename string) *fileNib {
 	var f fileNib
 
-	isPO := strings.HasSuffix(strings.ToLower(filename), "po")
+	isPO := strings.HasSuffix(strings.ToLower(filename), ".po")
 	f.logicalOrder = &dos33SectorsLogicalOrder
 	if isPO {
 		f.logicalOrder = &prodosSectorsLogicalOrder
@@ -76,7 +84,7 @@ func (f *fileNib) saveTrack(track int) {
 	if f.supportsWrite {
 		file, err := os.OpenFile(f.filename, os.O_RDWR, 0)
 		if err != nil {
-			// We can't open the file for writing"
+			// We can't open the file for writing
 			f.supportsWrite = false
 			fmt.Printf("Data can't be written for %v\n", f.filename)
 		}
@@ -156,8 +164,9 @@ var sixAndTwoUntranslateTable = [256]int16{
 }
 
 const (
-	gap1Len             = 48
-	gap2Len             = 5
+	gap1Len             = 16
+	gap2Len             = 7
+	gap3Len             = 16
 	primaryBufferSize   = bytesPerSector
 	secondaryBufferSize = bytesPerSector/3 + 1
 )
@@ -205,6 +214,11 @@ func nibEncodeTrack(data []byte, volume byte, track byte, logicalOrder *[16]int)
 	for i := range gap2 {
 		gap2[i] = 0xff
 	}
+	gap3 := make([]byte, gap3Len)
+	for i := range gap3 {
+		gap3[i] = 0xff
+	}
+	b = append(b, gap1...)
 	for physicalSector := byte(0); physicalSector < numberOfSectors; physicalSector++ {
 		/* On the DSK file the sectors are in DOS3.3 logical order
 		but on the physical encoded track as well as in the nib
@@ -229,7 +243,6 @@ func nibEncodeTrack(data []byte, volume byte, track byte, logicalOrder *[16]int)
 
 		// Render sector
 		// Address field
-		b = append(b, gap1...)
 		b = append(b, 0xd5, 0xaa, 0x96)                                  // Address prolog
 		b = append(b, oddEvenEncodeByte(volume)...)                      // 4-4 encoded volume
 		b = append(b, oddEvenEncodeByte(track)...)                       // 4-4 encoded track
@@ -250,6 +263,7 @@ func nibEncodeTrack(data []byte, volume byte, track byte, logicalOrder *[16]int)
 		}
 		b = append(b, sixAndTwoTranslateTable[prevV]) // Checksum
 		b = append(b, 0xde, 0xaa, 0xeb)               // Data epilog
+		b = append(b, gap3...)
 	}
 
 	return b
@@ -257,33 +271,42 @@ func nibEncodeTrack(data []byte, volume byte, track byte, logicalOrder *[16]int)
 
 func findProlog(diskPrologByte3 uint8, data []byte, position int) int {
 	l := len(data)
-	for i := position; i < l; i++ {
-		if (data[i] == diskPrologByte1) &&
-			(data[(i+1)%l] == diskPrologByte2) &&
-			(data[(i+2)%l] == diskPrologByte3) {
-
-			return (i + 3) % l
+	p := position
+	if p < l {
+		for c := 0; c < l; c++ {
+			if (data[p] == diskPrologByte1) &&
+				(data[(p+1)%l] == diskPrologByte2) &&
+				(data[(p+2)%l] == diskPrologByte3) {
+				return (p + 3) % l
+			}
+			p++
+			p = p % l
 		}
 	}
-
 	return -1
 }
 
 func nibDecodeTrack(data []byte, logicalOrder *[16]int) ([]byte, error) {
 	b := make([]byte, bytesPerTrack) // Buffer slice with enough capacity
-
-	i := int(0)
+	s := map[byte]bool{}             // track sectors
+	i := 0
 	l := len(data)
 
 	for {
 		// Find address field prolog
 		i = findProlog(diskPrologByte3Address, data, i)
-		if i == -1 {
+		if i == -1 || len(s) == numberOfSectors {
 			break
 		}
 
 		// We just want the sector from the address field, we ignore the rest, no error detection
+		volume := oddEvenDecodeByte(data[(i)%l], data[(i+1)%l])
+		track := oddEvenDecodeByte(data[(i+2)%l], data[(i+3)%l])
 		sector := oddEvenDecodeByte(data[(i+4)%l], data[(i+5)%l])
+		checksum := oddEvenDecodeByte(data[(i+6)%l], data[(i+7)%l])
+		if volume^track^sector != checksum {
+			continue // no valid checksum so we will have to skip this block
+		}
 		logicalSector := logicalOrder[sector]
 		dst := int(logicalSector) * bytesPerSector
 
@@ -294,9 +317,10 @@ func nibDecodeTrack(data []byte, logicalOrder *[16]int) ([]byte, error) {
 		// Read secondary buffer
 		prevV := byte(0)
 		for j := 0; j < secondaryBufferSize; j++ {
-			w := sixAndTwoUntranslateTable[data[i%l]]
+			b2 := data[i%l]
+			w := sixAndTwoUntranslateTable[b2]
 			if w == -1 {
-				return nil, errors.New("Invalid byte from nib data")
+				return nil, errors.New("invalid byte from nib data")
 			}
 			v := byte(w) ^ prevV
 			prevV = v
@@ -313,15 +337,17 @@ func nibDecodeTrack(data []byte, logicalOrder *[16]int) ([]byte, error) {
 
 		// Read primary buffer
 		for j := 0; j < primaryBufferSize; j++ {
-			w := sixAndTwoUntranslateTable[data[i%l]]
+			b3 := data[i%l]
+			w := sixAndTwoUntranslateTable[b3]
 			if w == -1 {
-				return nil, errors.New("Invalid byte from nib data")
+				return nil, errors.New("invalid byte from nib data")
 			}
 			v := byte(w) ^ prevV
 			b[dst+j] |= v << 2 // The elements of the secondary buffer are the 6 MSB bits
 			prevV = v
 			i++
 		}
+		s[sector] = true
 	}
 
 	return b, nil

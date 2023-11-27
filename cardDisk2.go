@@ -15,7 +15,7 @@ http://yesterbits.com/media/pubs/AppleOrchard/articles/disk-ii-part-1-1983-apr.p
 
 "IMW Floppy Disk I/O Controller info" (https://www.brutaldeluxe.fr/documentation/iwm/apple2_IWM_INFO_19840510.pdf)
 
-"Understanfing the Apple II, chapter 9"
+"Understanding the Apple II, chapter 9"
 
 35 tracks, 16 sectors, 256 bytes
 NIB: 35 tracks 6656 bytes, 232960 bytes
@@ -44,7 +44,7 @@ type cardDisk2Drive struct {
 	name      string
 	diskette  storage.Diskette
 	phases    uint8 // q3, q2, q1 and q0 with q0 on the LSB. Magnets that are active on the stepper motor
-	trackStep int   // Stepmotor for tracks position. 4 steps per track
+	trackStep int   // Step motor for tracks position. 4 steps per track
 }
 
 // NewCardDisk2 creates a new CardDisk2
@@ -56,7 +56,7 @@ func NewCardDisk2(trackTracer trackTracer) *CardDisk2 {
 	return &c
 }
 
-// GetInfo returns smartPort info
+// GetInfo returns disk2 info
 func (c *CardDisk2) GetInfo() map[string]string {
 	info := make(map[string]string)
 	info["rom"] = "16 sector"
@@ -123,7 +123,7 @@ func (c *CardDisk2) assign(a *Apple2, slot int) {
 		return 0
 	}, "Q4DRIVEON")
 
-	// Q5, drive selecion
+	// Q5, drive selection
 	c.addCardSoftSwitchR(0xA, func() uint8 {
 		c.softSwitchQ5(0)
 		return c.dataLatch
@@ -164,6 +164,11 @@ func (c *CardDisk2) softSwitchQ4(value bool) {
 		if drive.diskette != nil {
 			drive.diskette.PowerOn(c.a.cpu.GetCycles())
 		}
+	}
+	c.a.DriveStatusChannel <- driveState{
+		Slot:   c.slot,
+		Drive:  c.selected,
+		Active: c.power,
 	}
 }
 

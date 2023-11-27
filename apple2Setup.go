@@ -15,8 +15,15 @@ func newApple2() *Apple2 {
 	return &a
 }
 
+type driveState struct {
+	Slot   int
+	Drive  int
+	Active bool
+}
+
 func (a *Apple2) setup(clockMhz float64, fastMode bool) {
 	a.commandChannel = make(chan command, 100)
+	a.DriveStatusChannel = make(chan driveState, 100)
 	a.fastMode = fastMode
 
 	if clockMhz <= 0 {
@@ -113,7 +120,7 @@ func (a *Apple2) AddDisk2(slot int, diskImage, diskBImage string, trackTracer tr
 	return nil
 }
 
-// AddDisk2 inserts a DiskII controller
+// AddDisk2Sequencer inserts a DiskII controller using Woz state machine
 func (a *Apple2) AddDisk2Sequencer(slot int, diskImage, diskBImage string, trackTracer trackTracer) error {
 	c := NewCardDisk2Sequencer(trackTracer)
 	a.insertCard(c, slot)
@@ -145,7 +152,7 @@ func (a *Apple2) AddSmartPortDisk(slot int, hdImage string, traceHD bool, traceS
 	return err
 }
 
-// AddSmartPortDisk adds a smart port card and image
+// AddFujinet adds a Fujinet card
 func (a *Apple2) AddFujinet(slot int, trace bool) {
 	c := NewCardSmartPort()
 	c.trace = trace

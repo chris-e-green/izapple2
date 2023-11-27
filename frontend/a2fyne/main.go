@@ -65,7 +65,7 @@ func fyneRun(s *state) {
 	toolbar := buildToolbar(s)
 	display := canvas.NewImageFromImage(nil)
 	display.ScaleMode = canvas.ImageScalePixels // Looks worst but loads less.
-	display.SetMinSize(fyne.NewSize(280, 192))
+	display.SetMinSize(fyne.NewSize(840, 576))
 
 	container := container.New(
 		layout.NewBorderLayout(nil, toolbar, nil, s.devices.w),

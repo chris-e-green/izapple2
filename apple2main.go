@@ -8,6 +8,7 @@ const defaultInternal = "<default>"
 
 // MainApple is a device independent main. Video, keyboard and speaker won't be defined
 func MainApple() *Apple2 {
+	var diskImage string
 	romFile := flag.String(
 		"rom",
 		defaultInternal,
@@ -16,8 +17,12 @@ func MainApple() *Apple2 {
 		"disk2Slot",
 		6,
 		"slot for the disk driver. -1 for none.")
-	diskImage := flag.String(
+	flag.StringVar(&diskImage,
 		"disk",
+		defaultInternal,
+		"file to load on the first disk drive"+" (shortcut)")
+	flag.StringVar(&diskImage,
+		"diska",
 		defaultInternal,
 		"file to load on the first disk drive")
 	diskBImage := flag.String(
@@ -32,6 +37,14 @@ func MainApple() *Apple2 {
 		"diskd",
 		"",
 		"file to load on the fourth disk drive, slot 5")
+	diskEImage := flag.String(
+		"diske",
+		"",
+		"file to load on the fifth disk drive, slot 4")
+	diskFImage := flag.String(
+		"diskf",
+		"",
+		"file to load on the sixth disk drive, slot 4")
 	hardDiskImage := flag.String(
 		"hd",
 		"",
@@ -185,7 +198,7 @@ func MainApple() *Apple2 {
 
 	// Process a filename with autodetection
 	filename := flag.Arg(0)
-	diskImageFinal := *diskImage
+	diskImageFinal := diskImage
 	hardDiskImageFinal := *hardDiskImage
 	if filename != "" {
 		// Try loading as diskette
@@ -266,9 +279,6 @@ func MainApple() *Apple2 {
 	if *consoleCardSlot >= 0 {
 		a.AddCardInOut(*consoleCardSlot)
 	}
-	if *mouseCardSlot > 0 {
-		a.AddMouseCard(*mouseCardSlot)
-	}
 	if *videxCardSlot > 0 {
 		a.AddVidexCard(*videxCardSlot)
 	}
@@ -301,6 +311,22 @@ func MainApple() *Apple2 {
 				panic(err)
 			}
 		}
+	}
+	if *diskEImage != "" || *diskFImage != "" {
+		if *sequencerDisk2 {
+			err := a.AddDisk2Sequencer(4, *diskEImage, *diskFImage, trackTracer)
+			if err != nil {
+				panic(err)
+			}
+		} else {
+			err := a.AddDisk2(4, *diskEImage, *diskFImage, trackTracer)
+			if err != nil {
+				panic(err)
+			}
+		}
+	}
+	if *mouseCardSlot > 0 {
+		a.AddMouseCard(*mouseCardSlot)
 	}
 
 	if *fujinetSlot >= 0 {

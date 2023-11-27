@@ -30,6 +30,7 @@ type Apple2 struct {
 	forceCaps            bool
 	tracers              []executionTracer
 	removableMediaDrives []drive
+	DriveStatusChannel   chan driveState
 }
 
 type executionTracer interface {

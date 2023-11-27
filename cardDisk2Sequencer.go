@@ -92,6 +92,7 @@ func (c *CardDisk2Sequencer) assign(a *Apple2, slot int) {
 		*/
 		c.q[address>>1] = (address & 1) != 0
 
+		updateDriveState(address, c)
 		// Advance the Disk2 state machine since the last call to softswitches
 		c.catchUp(data)
 
@@ -108,6 +109,22 @@ func (c *CardDisk2Sequencer) assign(a *Apple2, slot int) {
 	}, "DISK2SEQ")
 
 	c.cardBase.assign(a, slot)
+}
+
+func updateDriveState(address uint8, c *CardDisk2Sequencer) {
+	latch := address >> 1
+	latchSetting := (address & 1) != 0
+	if latch == 4 {
+		activeDrive := 0
+		if c.drive[1].enabled {
+			activeDrive = 1
+		}
+		c.a.DriveStatusChannel <- driveState{
+			Slot:   c.slot,
+			Drive:  activeDrive,
+			Active: latchSetting,
+		}
+	}
 }
 
 func (c *CardDisk2Sequencer) catchUp(data uint8) {
