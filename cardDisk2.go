@@ -165,10 +165,14 @@ func (c *CardDisk2) softSwitchQ4(value bool) {
 			drive.diskette.PowerOn(c.a.cpu.GetCycles())
 		}
 	}
-	c.a.DriveStatusChannel <- driveState{
+	select {
+	case c.a.DriveStatusChannel <- driveState{
 		Slot:   c.slot,
 		Drive:  c.selected,
 		Active: c.power,
+	}:
+	default:
+		// do nothing
 	}
 }
 

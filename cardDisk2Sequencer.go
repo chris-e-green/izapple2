@@ -119,10 +119,14 @@ func updateDriveState(address uint8, c *CardDisk2Sequencer) {
 		if c.drive[1].enabled {
 			activeDrive = 1
 		}
-		c.a.DriveStatusChannel <- driveState{
+		select {
+		case c.a.DriveStatusChannel <- driveState{
 			Slot:   c.slot,
 			Drive:  activeDrive,
 			Active: latchSetting,
+		}:
+		default:
+			// do nothing
 		}
 	}
 }
