@@ -56,7 +56,7 @@ func MainApple() *Apple2 {
 	fujinetSlot := flag.Int(
 		"fujinet",
 		-1,
-		"slot for the smatport card hosting the Fujinet. -1 for none.")
+		"slot for the smartport card hosting the Fujinet. -1 for none.")
 	smartPortImage := flag.String(
 		"disk35",
 		"",
