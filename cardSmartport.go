@@ -126,8 +126,6 @@ func (c *CardSmartPort) exec(call *smartPortCall) uint8 {
 		call.statusCode() == smartPortStatusCodeDevice {
 
 		result = c.hostStatus(call)
-	} else if unit > len(c.devices) {
-		result = smartPortErrorNoDevice
 	} else {
 		if unit == 0 {
 			unit = 1 // For unit 0(host) use the first device
