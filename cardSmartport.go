@@ -52,7 +52,7 @@ func (c *CardSmartPort) LoadImage(filename string, trace bool) error {
 	return err
 }
 
-// LoadImage loads a disk image
+// AddDevice adds a new smart port device
 func (c *CardSmartPort) AddDevice(device smartPortDevice) {
 	c.devices = append(c.devices, device)
 	c.hardDiskBlocks = 0 // Needed for the PRODOS status
