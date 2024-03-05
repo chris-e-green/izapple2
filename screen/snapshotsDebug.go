@@ -3,6 +3,7 @@ package screen
 import (
 	"image"
 	"image/color"
+	"strings"
 )
 
 // SnapshotParts the currently visible screen
@@ -85,6 +86,10 @@ func VideoModeName(vs VideoSource) string {
 		name += "-ALT"
 	}
 
+	if (videoMode & VideoFourColors) != 0 {
+		name += "-4COLORS"
+	}
+
 	switch mixMode {
 	case VideoMixText40:
 		name += "-MIX40"
@@ -150,5 +155,28 @@ func SnapshotCharacterGenerator(vs VideoSource, isAltText bool) *image.RGBA {
 		}
 	}
 
-	return renderText(vs, text, isAltText, nil, color.White)
+	snap := renderText(vs, text, isAltText, nil, color.White)
+	snap = linesSeparatedFilter(snap)
+	return snap
+}
+
+// SnapshotMessageGenerator shows a message on the screen
+func SnapshotMessageGenerator(vs VideoSource, message string) *image.RGBA {
+	lines := strings.Split(message, "\n")
+	text := make([]uint8, textLines*text40Columns)
+	for i := range text {
+		text[i] = 0x20 + 0x80 // Space
+	}
+
+	for l, line := range lines {
+		for c, char := range line {
+			if c < text40Columns && l < textLines {
+				text[text40Columns*l+c] = uint8(char) + 0x80
+			}
+		}
+	}
+
+	snap := renderText(vs, text, false, nil, color.White)
+	snap = linesSeparatedFilter(snap)
+	return snap
 }

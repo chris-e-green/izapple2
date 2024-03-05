@@ -16,7 +16,7 @@ type memoryManager struct {
 	cardsROMExtra [8]memoryHandler // 0xc800 to 0xcfff. 2048 bytes for each card
 
 	// Upper area ROM: 0xc000 to 0xffff (or 0xd000 to 0xffff on the II+)
-	physicalROM [4]memoryHandler // 0xc000 (or 0xd000) to 0xffff, 16 (or 12) Kb. Up to four banks
+	physicalROM memoryHandler // 0xc000 (or 0xd000) to 0xffff, 16 (or 12) Kb. Up to four banks
 
 	// Language card upper area RAM: 0xd000 to 0xffff. One bank for regular LC cards, up to 8 with Saturn
 	physicalLangRAM    []*memoryRange // 0xd000 to 0xffff, 12KB. Up to 8 banks.
@@ -43,9 +43,6 @@ type memoryManager struct {
 	activeSlot            uint8         // Active slot owner of 0xc800 to 0xcfff
 	extendedRAMBlock      uint8         // Block used for entended memory for RAMWorks cards
 	mainROMinhibited      memoryHandler // Alternative ROM from 0xd000 to 0xffff provided by a card with the INH signal.
-
-	// Configuration switches, Base64A
-	romPage uint8 // Active ROM page
 
 	// Resolution cache
 	lastAddressPage    uint16 // The first byte is the page. The second is zero when the cached is valid.
@@ -90,12 +87,12 @@ func (mmu *memoryManager) accessCArea(address uint16) memoryHandler {
 	// Internal IIe slot 3
 	if (address <= addressLimitSlots) && !mmu.slotC3ROMActive && (slot == 3) {
 		mmu.intC8ROMActive = true
-		return mmu.physicalROM[mmu.romPage]
+		return mmu.physicalROM
 	}
 
 	// Internal IIe CxROM
 	if mmu.intCxROMActive {
-		return mmu.physicalROM[mmu.romPage]
+		return mmu.physicalROM
 	}
 
 	// First slot area
@@ -114,13 +111,13 @@ func (mmu *memoryManager) accessCArea(address uint16) memoryHandler {
 
 	// Extra slot area
 	if mmu.intC8ROMActive {
-		return mmu.physicalROM[mmu.romPage]
+		return mmu.physicalROM
 	}
 	return mmu.cardsROMExtra[mmu.activeSlot]
 }
 
 func (mmu *memoryManager) accessUpperRAMArea(address uint16) memoryHandler {
-	if mmu.altZeroPage {
+	if mmu.altZeroPage && mmu.hasExtendedRAM() {
 		// Use extended RAM
 		block := mmu.extendedRAMBlock
 		if mmu.lcAltBank && address <= addressLimitDArea {
@@ -138,14 +135,14 @@ func (mmu *memoryManager) accessUpperRAMArea(address uint16) memoryHandler {
 }
 
 func (mmu *memoryManager) getPhysicalMainRAM(ext bool) memoryHandler {
-	if ext {
+	if ext && mmu.hasExtendedRAM() {
 		return mmu.physicalExtRAM[mmu.extendedRAMBlock]
 	}
 	return mmu.physicalMainRAM
 }
 
 func (mmu *memoryManager) getVideoRAM(ext bool) *memoryRange {
-	if ext {
+	if ext && mmu.hasExtendedRAM() {
 		// The video memory uses the first extended RAM block, even with RAMWorks
 		return mmu.physicalExtRAM[0]
 	}
@@ -188,7 +185,7 @@ func (mmu *memoryManager) accessRead(address uint16) memoryHandler {
 	if mmu.lcActiveRead {
 		return mmu.accessUpperRAMArea(address)
 	}
-	return mmu.physicalROM[mmu.romPage]
+	return mmu.physicalROM
 }
 
 func (mmu *memoryManager) accessWrite(address uint16) memoryHandler {
@@ -221,7 +218,7 @@ func (mmu *memoryManager) accessWrite(address uint16) memoryHandler {
 	if mmu.lcActiveWrite {
 		return mmu.accessUpperRAMArea(address)
 	}
-	return mmu.physicalROM[mmu.romPage]
+	return mmu.physicalROM
 }
 
 func (mmu *memoryManager) peekWord(address uint16) uint16 {
@@ -318,14 +315,6 @@ func (mmu *memoryManager) initExtendedRAM(groups int) {
 }
 
 // Memory configuration
-func (mmu *memoryManager) setActiveROMPage(page uint8) {
-	mmu.romPage = page
-}
-
-func (mmu *memoryManager) getActiveROMPage() uint8 {
-	return mmu.romPage
-}
-
 func (mmu *memoryManager) setLanguageRAM(readActive bool, writeActive bool, altBank bool) {
 	mmu.lcActiveRead = readActive
 	mmu.lcActiveWrite = writeActive
@@ -343,6 +332,10 @@ func (mmu *memoryManager) setExtendedRAMActiveBlock(block uint8) {
 		block = 0
 	}
 	mmu.extendedRAMBlock = block
+}
+
+func (mmu *memoryManager) hasExtendedRAM() bool {
+	return len(mmu.physicalExtRAM) > 0
 }
 
 func (mmu *memoryManager) reset() {

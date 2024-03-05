@@ -10,6 +10,8 @@ type Card interface {
 	assign(a *Apple2, slot int)
 	reset()
 
+	setName(name string)
+	setDebug(debug bool)
 	GetName() string
 	GetInfo() map[string]string
 }
@@ -17,7 +19,8 @@ type Card interface {
 type cardBase struct {
 	a       *Apple2
 	name    string
-	romCsxx memoryHandler
+	trace   bool
+	romCsxx *memoryRangeROM
 	romC8xx memoryHandler
 	romCxxx memoryHandler
 
@@ -28,6 +31,10 @@ type cardBase struct {
 	_sswName [16]string
 }
 
+func (c *cardBase) setName(name string) {
+	c.name = name
+}
+
 func (c *cardBase) GetName() string {
 	return c.name
 }
@@ -36,22 +43,27 @@ func (c *cardBase) GetInfo() map[string]string {
 	return nil
 }
 
+func (c *cardBase) setDebug(debug bool) {
+	c.trace = debug
+}
+
 func (c *cardBase) reset() {
 	// nothing
 }
 
-func (c *cardBase) loadRomFromResource(resource string) {
+func (c *cardBase) loadRomFromResource(resource string) error {
 	data, _, err := LoadResource(resource)
 	if err != nil {
 		// The resource should be internal and never fail
-		panic(err)
+		return err
 	}
 	c.loadRom(data)
+	return nil
 }
 
 func (c *cardBase) loadRom(data []uint8) {
 	if c.a != nil {
-		panic("Assert failed. Rom must be loaded before inserting the card in the slot")
+		panic("Assert failed. ROM must be loaded before inserting the card in the slot")
 	}
 	if len(data) == 0x100 {
 		// Just 256 bytes in Cs00
@@ -71,6 +83,10 @@ func (c *cardBase) loadRom(data []uint8) {
 		// The file covers the full Cxxx range. Only showing the page
 		// corresponding to the slot used.
 		c.romCxxx = newMemoryRangeROM(0xc000, data, "Slot ROM")
+	} else if len(data)%0x100 == 0 {
+		// The ROM covers many 256 bytes pages oc Csxx
+		// Used on the Dan 2 controller card
+		c.romCsxx = newMemoryRangePagedROM(0, data, "Slot paged ROM", uint8(len(data)/0x100))
 	} else {
 		panic("Invalid ROM size")
 	}
@@ -136,5 +152,12 @@ func (c *cardBase) addCardSoftSwitches(sss softSwitches, name string) {
 		c.addCardSoftSwitchW(address, func(value uint8) {
 			sss(address, value, true)
 		}, fmt.Sprintf("%v%XW", name, address))
+	}
+}
+
+func (c *cardBase) tracef(format string, args ...interface{}) {
+	if c.trace {
+		prefixedFormat := fmt.Sprintf("[%s] %v", c.name, format)
+		fmt.Printf(prefixedFormat, args...)
 	}
 }

@@ -29,6 +29,11 @@ Portable emulator of an Apple II+ or //e. Written in Go.
   - No Slot Clock based on the DS1216
   - Videx Videoterm 80 column card with the Videx Soft Video Switch (Apple ][+ only)
   - SwyftCard (Apple //e only)
+  - Brain Board
+  - Brain Board II
+  - MultiROM card
+  - Dan ][ Controller card
+  - ProDOS ROM card
 - Useful cards not emulating a real card
   - Bootable SmartPort / ProDOS card with the following smartport devices:
       - Block device (hard disks)
@@ -164,114 +169,100 @@ Line:
 
 ```
 
-### Keys
-
-- Ctrl-F1: Reset button
-- F5: Toggle speed between real and fastest
-- Ctrl-F5: Show current speed in Mhz
-- F6: Toggle between NTSC color TV and green phosphor monochrome monitor
-- F7: Show the video mode and a split screen with the views for NTSC color TV, page 1, page 2 and extra info.
-- F10: Cycle character generator code pages. Only if the character generator ROM has more than one 2Kb page.
-- Ctrl-F10: Show the charater map for the current character generator page.
-- Shift-F10: When showing the character map, use altText.
-- F11: Toggle on and off the trace to console of the CPU execution
-- F12: Save a screen snapshot to a file `snapshot.png`
-- Pause: Pause the emulation
-
-Drag and drop a diskette file on the left side of the window to change Drive 1; to the right side to change the disk on Drive 2.
-
-Only valid on SDL mode
-
 ### Command line options
 
+<!-- doc/usage.txt start -->
 ```terminal
-  -charRom string
-        rom file for the character generator (default "<default>")
-  -consoleCardSlot int
-    	  slot for the host console card. -1 for none (default -1)
-  -disk string
-        file to load on the first disk drive (default "<internal>/dos33.dsk")
-  -disk2Slot int
-        slot for the disk driver. -1 for none. (default 6)
-  -disk35 string
-        file to load on the SmartPort disk (slot 5)
-  -diskRom string
-        rom file for the disk drive controller (default "<internal>/DISK2.rom")
-  -diskb string
-        file to load on the second disk drive
-  -diskc string
-        file to load on the third disk drive, slot 5
-  -diskd string
-        file to load on the fourth disk drive, slot 5
-  -fastChipSlot int
-        slot for the FASTChip accelerator card, -1 for none (default 3)
+Usage:  izapple2 [file]
+  file
+    	path to image to use on the boot device
+  -charrom string
+    	rom file for the character generator (default "<internal>/Apple IIe Video Enhanced.bin")
+  -cpu string
+    	cpu type, can be '6502' or '65c02' (default "65c02")
   -forceCaps
-        force all letters to be uppercased (no need for caps lock!)
-  -fastDisk
-        set fast mode when the disks are spinning (default true)
-  -hd string
-        file to load on the boot hard disk
-  -hdSlot int
-        slot for the hard drive if present. -1 for none. (default -1)
-  -languageCardSlot int
-        slot for the 16kb language card. -1 for none
-  -memoryExpSlot int
-        slot for the Memory Expansion card with 1GB. -1 for none (default -1)
-  -mhz float
-        cpu speed in Mhz, use 0 for full speed. Use F5 to toggle. (default 1.0227142857142857)
+    	force all letters to be uppercased (no need for caps lock!)
   -model string
-        set base model. Models available 2plus, 2e, 2enh, base64a (default "2enh")
-  -mouseCardSlot int
-    	  slot for the Mouse card. -1 for none (default 4)
-  -nsc int
-        add a DS1216 No-Slot-Clock on the main ROM (use 0) or a slot ROM. -1 for none (default -1)
-  -panicSS
-        panic if a not implemented softswitch is used
-  -printer int
-        slot for the Parallel Printer Interface. -1 for none (default 1)
+    	set base model (default "2enh")
+  -mods string
+    	comma separated list of mods applied to the board, available mods are 'shift', 'four-colors
+  -nsc string
+    	add a DS1216 No-Slot-Clock on the main ROM (use 'main') or a slot ROM (default "main")
   -profile
-        generate profile trace to analyse with pprof
-  -ramworks int
-        memory to use with RAMWorks card, 0 for no card, max is 16384 (default 8192)
+    	generate profile trace to analyse with pprof
+  -ramworks string
+    	memory to use with RAMWorks card, max is 16384 (default "8192")
   -rgb
-        emulate the RGB modes of the 80col RGB card for DHGR (default true)
+    	emulate the RGB modes of the 80col RGB card for DHGR
   -rom string
-        main rom file (default "<default>")
+    	main rom file (default "<internal>/Apple2e_Enhanced.rom")
   -romx
-        emulate a RomX
-  -saturnCardSlot int
-        slot for the 256kb Saturn card. -1 for none (default -1)
-  -sequencer
-        use the sequencer based Disk II card
-  -swyftCard
-        activate a Swyft Card in slot 3. Load the tutorial disk if none provided
-  -thunderClockCardSlot int
-        slot for the ThunderClock Plus card. -1 for none (default 4)
-  -traceBBC
-        trace BBC MOS API calls used with Applecorn, skip console I/O calls
-  -traceBBCFull
-        trace BBC MOS API calls used with Applecorn
-  -traceCpu
-        dump to the console the CPU execution. Use F11 to toggle.
-  -traceHD
-        dump to the console the hd/smartPort commands
-  -traceMLI
-        dump to the console the calls to ProDOS machine language interface calls to $BF00
-  -tracePascal
-        dump to the console the calls to the Apple Pascal BIOS
-  -traceSS
-        dump to the console the sofswitches calls
-  -traceSSReg
-        dump to the console the sofswitch registrations
-  -traceTracks
-        dump to the console the disk tracks changes
-  -vidHDSlot int
-        slot for the VidHD card, only for //e models. -1 for none (default 2)
-  -videxCardSlot int
-    	  slot for the Videx Videoterm 80 columns card. For pre-2e models. -1 for none (default 3)
+    	emulate a RomX
+  -s0 string
+    	slot 0 configuration. (default "language")
+  -s1 string
+    	slot 1 configuration. (default "empty")
+  -s2 string
+    	slot 2 configuration. (default "vidhd")
+  -s3 string
+    	slot 3 configuration. (default "fastchip")
+  -s4 string
+    	slot 4 configuration. (default "empty")
+  -s5 string
+    	slot 5 configuration. (default "empty")
+  -s6 string
+    	slot 6 configuration. (default "diskii,disk1=<internal>/dos33.dsk")
+  -s7 string
+    	slot 7 configuration. (default "empty")
+  -speed string
+    	cpu speed in Mhz, can be 'ntsc', 'pal', 'full' or a decimal nunmber (default "ntsc")
+  -trace string
+    	trace CPU execution with one or more comma separated tracers (default "none")
 
+The available pre-configured models are:
+  2: Apple ][
+  2e: Apple IIe
+  2enh: Apple //e
+  2plus: Apple ][+
+  base64a: Base 64A
+  swyft: swyft
+
+The available cards are:
+  brainboard: Firmware card. It has two ROM banks
+  brainboard2: Firmware card. It has up to four ROM banks
+  dan2sd: Apple II Peripheral Card that Interfaces to a ATMEGA328P for SD card storage
+  diskii: Disk II interface card
+  diskiiseq: Disk II interface card emulating the Woz state machine
+  fastchip: Accelerator card for Apple IIe (limited support)
+  fujinet: SmartPort interface card hosting the Fujinet
+  inout: Card to test I/O
+  language: Language card with 16 extra KB for the Apple ][ and ][+
+  memexp: Memory expansion card
+  mouse: Mouse card implementation, does not emulate a real card, only the firmware behaviour
+  multirom: Multiple Image ROM card
+  parallel: Card to dump to a file what would be printed to a parallel printer
+  prodosrom: A bootable 1 MB solid state disk
+  saturn: RAM card with 128Kb, it's like 8 language cards
+  smartport: SmartPort interface card
+  softswitchlogger: Card to log softswitch accesses
+  swyftcard: Card with the ROM needed to run the Swyftcard word processing system
+  thunderclock: Clock card
+  videx: Videx compatible 80 columns card
+  vidhd: Firmware signature of the VidHD card to trick Total Replay to use the SHR mode
+
+The available tracers are:
+  cpm65: Trace CPM65 BDOS calls
+  cpu: Trace CPU execution
+  mli: Trace ProDOS MLI calls
+  mos: Trace MOS calls with Applecorn skipping terminal IO
+  mosfull: Trace MOS calls with Applecorn
+  panicSS: Panic on unimplemented softswitches
+  ss: Trace sotfswiches calls
+  ssreg: Trace sotfswiches registrations
+  ucsd: Trace UCSD system calls
 
 ```
+<!-- doc/usage.txt end -->
 
 ## Building from source
 

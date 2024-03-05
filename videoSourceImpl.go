@@ -89,6 +89,12 @@ func (a *Apple2) GetCurrentVideoMode() uint16 {
 	if isAltText {
 		mode |= screen.VideoAltText
 	}
+	if isRGBCard {
+		mode |= screen.VideoRGBCard
+	}
+	if a.isFourColors {
+		mode |= screen.VideoFourColors
+	}
 
 	return mode
 }

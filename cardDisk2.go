@@ -28,6 +28,7 @@ type CardDisk2 struct {
 	selected int  // q5, Only 0 and 1 supported
 	power    bool // q4
 	drive    [2]cardDisk2Drive
+	fastMode bool
 
 	dataLatch uint8
 	q6        bool
@@ -47,13 +48,45 @@ type cardDisk2Drive struct {
 	trackStep int   // Stepmotor for tracks position. 4 steps per track
 }
 
-// NewCardDisk2 creates a new CardDisk2
-func NewCardDisk2(trackTracer trackTracer) *CardDisk2 {
-	var c CardDisk2
-	c.name = "Disk II"
-	c.trackTracer = trackTracer
-	c.loadRomFromResource("<internal>/DISK2.rom")
-	return &c
+func newCardDisk2Builder() *cardBuilder {
+	return &cardBuilder{
+		name:        "Disk II",
+		description: "Disk II interface card",
+		defaultParams: &[]paramSpec{
+			{"disk1", "Diskette image for drive 1", ""},
+			{"disk2", "Diskette image for drive 2", ""},
+			{"tracktracer", "Trace how the disk head moves between tracks", "false"},
+			{"fast", "Enable CPU burst when accessing the disk", "true"},
+		},
+		buildFunc: func(params map[string]string) (Card, error) {
+			var c CardDisk2
+			err := c.loadRomFromResource("<internal>/DISK2.rom")
+			if err != nil {
+				return nil, err
+			}
+
+			disk1 := paramsGetPath(params, "disk1")
+			if disk1 != "" {
+				err := c.drive[0].insertDiskette(disk1)
+				if err != nil {
+					return nil, err
+				}
+			}
+			disk2 := paramsGetPath(params, "disk2")
+			if disk2 != "" {
+				err := c.drive[1].insertDiskette(disk2)
+				if err != nil {
+					return nil, err
+				}
+			}
+			trackTracer := paramsGetBool(params, "tracktracer")
+			if trackTracer {
+				c.trackTracer = makeTrackTracerLogger()
+			}
+			c.fastMode = paramsGetBool(params, "fast")
+			return &c, nil
+		},
+	}
 }
 
 // GetInfo returns smartPort info
@@ -80,6 +113,10 @@ func (c *CardDisk2) reset() {
 	c.q7 = false
 }
 
+func (c *CardDisk2) setTrackTracer(tt trackTracer) {
+	c.trackTracer = tt
+}
+
 func (c *CardDisk2) assign(a *Apple2, slot int) {
 	a.registerRemovableMediaDrive(&c.drive[0])
 	a.registerRemovableMediaDrive(&c.drive[1])
@@ -87,7 +124,7 @@ func (c *CardDisk2) assign(a *Apple2, slot int) {
 	// Q1, Q2, Q3 and Q4 phase control soft switches,
 	for i := uint8(0); i < 4; i++ {
 		phase := i
-		c.addCardSoftSwitchR(phase<<1, func() uint8 {
+		c.addCardSoftSwitchRW(phase<<1, func() uint8 {
 			// Update magnets and position
 			drive := &c.drive[c.selected]
 			drive.phases &^= (1 << phase)
@@ -100,7 +137,7 @@ func (c *CardDisk2) assign(a *Apple2, slot int) {
 			return c.dataLatch // All even addresses return the last dataLatch
 		}, fmt.Sprintf("PHASE%vOFF", phase))
 
-		c.addCardSoftSwitchR((phase<<1)+1, func() uint8 { // Update magnets and position
+		c.addCardSoftSwitchRW((phase<<1)+1, func() uint8 { // Update magnets and position
 			drive := &c.drive[c.selected]
 			drive.phases |= (1 << phase)
 			drive.trackStep = moveDriveStepper(drive.phases, drive.trackStep)
@@ -114,21 +151,21 @@ func (c *CardDisk2) assign(a *Apple2, slot int) {
 	}
 
 	// Q4, power switch
-	c.addCardSoftSwitchR(0x8, func() uint8 {
+	c.addCardSoftSwitchRW(0x8, func() uint8 {
 		c.softSwitchQ4(false)
 		return c.dataLatch
 	}, "Q4DRIVEOFF")
-	c.addCardSoftSwitchR(0x9, func() uint8 {
+	c.addCardSoftSwitchRW(0x9, func() uint8 {
 		c.softSwitchQ4(true)
 		return 0
 	}, "Q4DRIVEON")
 
 	// Q5, drive selecion
-	c.addCardSoftSwitchR(0xA, func() uint8 {
+	c.addCardSoftSwitchRW(0xA, func() uint8 {
 		c.softSwitchQ5(0)
 		return c.dataLatch
 	}, "Q5SELECT1")
-	c.addCardSoftSwitchR(0xB, func() uint8 {
+	c.addCardSoftSwitchRW(0xB, func() uint8 {
 		c.softSwitchQ5(1)
 		return 0
 	}, "Q5SELECT2")
@@ -151,7 +188,9 @@ func (c *CardDisk2) softSwitchQ4(value bool) {
 	if !value && c.power {
 		// Turn off
 		c.power = false
-		c.a.ReleaseFastMode()
+		if c.fastMode {
+			c.a.ReleaseFastMode()
+		}
 		drive := &c.drive[c.selected]
 		if drive.diskette != nil {
 			drive.diskette.PowerOff(c.a.cpu.GetCycles())
@@ -159,7 +198,9 @@ func (c *CardDisk2) softSwitchQ4(value bool) {
 	} else if value && !c.power {
 		// Turn on
 		c.power = true
-		c.a.RequestFastMode()
+		if c.fastMode {
+			c.a.RequestFastMode()
+		}
 		drive := &c.drive[c.selected]
 		if drive.diskette != nil {
 			drive.diskette.PowerOn(c.a.cpu.GetCycles())
