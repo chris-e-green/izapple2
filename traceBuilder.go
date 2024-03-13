@@ -74,6 +74,11 @@ func getTracerFactory() map[string]*traceBuilder {
 		description:     "Trace CPM65 BDOS calls",
 		executionTracer: newTraceCpm65(false),
 	}
+	tracerFactory["monitor"] = &traceBuilder{
+		name:            "monitor",
+		description:     "Trace Monitor calls",
+		executionTracer: newTraceMonitor(),
+	}
 	return tracerFactory
 }
 
