@@ -28,6 +28,7 @@ const noCardName = "empty"
 var commonParams = []paramSpec{
 	{"trace", "Enable debug messages", "false"},
 	{"tracess", "Trace softswitches", "false"},
+	{"panicss", "Panic on unimplemented softswitches", "false"},
 }
 
 var cardFactory map[string]*cardBuilder
@@ -51,7 +52,9 @@ func getCardFactory() map[string]*cardBuilder {
 	cardFactory["mouse"] = newCardMouseBuilder()
 	cardFactory["multirom"] = newMultiRomCardBuilder()
 	cardFactory["parallel"] = newCardParallelPrinterBuilder()
-	cardFactory["prodosrom"] = newCardProDOSRomDriveBuilder()
+	cardFactory["prodosromdrive"] = newCardProDOSRomDriveBuilder()
+	cardFactory["prodosromcard3"] = newCardProDOSRomCard3Builder()
+	//cardFactory["prodosnvramdrive"] = newCardProDOSNVRAMDriveBuilder()
 	cardFactory["saturn"] = newCardSaturnBuilder()
 	cardFactory["smartport"] = newCardSmartPortStorageBuilder()
 	cardFactory["swyftcard"] = newCardSwyftBuilder()
@@ -65,6 +68,20 @@ func availableCards() []string {
 	names := maps.Keys(getCardFactory())
 	slices.Sort(names)
 	return names
+}
+
+func (cb *cardBuilder) fullDefaultParams() map[string]string {
+	finalParams := make(map[string]string)
+	for _, commonParam := range commonParams {
+		finalParams[commonParam.name] = commonParam.defaultValue
+	}
+	if cb.defaultParams != nil {
+		for _, defaultParam := range *cb.defaultParams {
+			finalParams[defaultParam.name] = defaultParam.defaultValue
+		}
+	}
+
+	return finalParams
 }
 
 func setupCard(a *Apple2, slot int, paramString string) (Card, error) {
@@ -84,16 +101,7 @@ func setupCard(a *Apple2, slot int, paramString string) (Card, error) {
 		return nil, fmt.Errorf("card %s requires an Apple IIe", builder.name)
 	}
 
-	finalParams := make(map[string]string)
-	for _, commonParam := range commonParams {
-		finalParams[commonParam.name] = commonParam.defaultValue
-	}
-	if builder.defaultParams != nil {
-		for _, defaultParam := range *builder.defaultParams {
-			finalParams[defaultParam.name] = defaultParam.defaultValue
-		}
-	}
-
+	finalParams := builder.fullDefaultParams()
 	for i := 1; i < len(actualArgs); i++ {
 		actualArgSides := splitConfigurationString(actualArgs[i], '=')
 		actualArgName := strings.ToLower(actualArgSides[0])
@@ -117,9 +125,12 @@ func setupCard(a *Apple2, slot int, paramString string) (Card, error) {
 	}
 
 	// Common parameters
-	traceSS := paramsGetBool(finalParams, "tracess")
-	if traceSS {
+	if paramsGetBool(finalParams, "tracess") {
 		a.io.traceSlot(slot)
+	}
+
+	if paramsGetBool(finalParams, "panicss") {
+		a.io.panicNotImplementedSlot(slot)
 	}
 
 	debug := paramsGetBool(finalParams, "trace")

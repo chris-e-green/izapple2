@@ -42,7 +42,7 @@ func newCardVidexBuilder() *cardBuilder {
 			var c CardVidex
 
 			// The C800 area has ROM and RAM
-			err := c.loadRomFromResource("<internal>/Videx Videoterm ROM 2.4.bin")
+			err := c.loadRomFromResource("<internal>/Videx Videoterm ROM 2.4.bin", cardRomUpperHalfEnd)
 			if err != nil {
 				return nil, err
 			}
@@ -121,10 +121,6 @@ func (c *CardVidex) poke(address uint16, value uint8) {
 	if address >= videxRomLimit && address < videxSramLimit {
 		c.sram[address&videxSramMask+uint16(c.sramPage)*0x200] = value
 	}
-}
-
-func (c *CardVidex) setBase(base uint16) {
-	// Nothing
 }
 
 const (

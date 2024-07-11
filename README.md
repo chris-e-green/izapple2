@@ -241,7 +241,8 @@ The available cards are:
   mouse: Mouse card implementation, does not emulate a real card, only the firmware behaviour
   multirom: Multiple Image ROM card
   parallel: Card to dump to a file what would be printed to a parallel printer
-  prodosrom: A bootable 1 MB solid state disk
+  prodosromcard3: A bootable 4 MB ROM card by Ralle Palaveev
+  prodosromdrive: A bootable 1 MB solid state disk by Terence Boldt
   saturn: RAM card with 128Kb, it's like 8 language cards
   smartport: SmartPort interface card
   softswitchlogger: Card to log softswitch accesses
@@ -256,7 +257,7 @@ The available tracers are:
   mli: Trace ProDOS MLI calls
   mos: Trace MOS calls with Applecorn skipping terminal IO
   mosfull: Trace MOS calls with Applecorn
-  panicSS: Panic on unimplemented softswitches
+  panicss: Panic on unimplemented softswitches
   ss: Trace sotfswiches calls
   ssreg: Trace sotfswiches registrations
   ucsd: Trace UCSD system calls
