@@ -148,7 +148,7 @@ func NewFileWoz(data []uint8) (*FileWoz, error) {
 	} else if bytes.Equal(headerWoz2, header) {
 		f.version = 2
 	} else {
-		return nil, errors.New("Invalid WOZ header")
+		return nil, errors.New("invalid WOZ header")
 	}
 
 	// Extract the chunks
@@ -156,12 +156,15 @@ func NewFileWoz(data []uint8) (*FileWoz, error) {
 	var chunkHeader wozChunkHeader
 	chunks := make(map[string][]uint8)
 	for i+wozChunkHeaderLen < len(data) {
-		binary.Read(bytes.NewReader(data[i:]), binary.LittleEndian, &chunkHeader)
+		err := binary.Read(bytes.NewReader(data[i:]), binary.LittleEndian, &chunkHeader)
+		if err != nil {
+			return nil, err
+		}
 
 		i += wozChunkHeaderLen
 		iNext := i + int(chunkHeader.Size)
 		if i == iNext || iNext > len(data) {
-			return nil, errors.New("Invalid chunk in WOZ file")
+			return nil, errors.New("invalid chunk in WOZ file")
 		}
 
 		id := string(chunkHeader.ID[:])
@@ -174,13 +177,19 @@ func NewFileWoz(data []uint8) (*FileWoz, error) {
 	// Read the INFO chunk
 	infoData, ok := chunks["INFO"]
 	if !ok {
-		return nil, errors.New("Chunk INFO missing from WOZ file")
+		return nil, errors.New("chunk INFO missing from WOZ file")
 	}
 	switch f.version {
 	case 1:
-		binary.Read(bytes.NewReader(infoData), binary.LittleEndian, &f.Info.woz1Info)
+		err := binary.Read(bytes.NewReader(infoData), binary.LittleEndian, &f.Info.woz1Info)
+		if err != nil {
+			return nil, err
+		}
 	case 2:
-		binary.Read(bytes.NewReader(infoData), binary.LittleEndian, &f.Info)
+		err := binary.Read(bytes.NewReader(infoData), binary.LittleEndian, &f.Info)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Read the optional META chunk
@@ -201,21 +210,24 @@ func NewFileWoz(data []uint8) (*FileWoz, error) {
 	// Read the TMAP chunk
 	trackMap, ok := chunks["TMAP"]
 	if !ok {
-		return nil, errors.New("Chunk TMAP missing from WOZ file")
+		return nil, errors.New("chunk TMAP missing from WOZ file")
 	}
 	f.trackMap = trackMap
 
 	// Read the TRKS chunk
 	tracksData, ok := chunks["TRKS"]
 	if !ok {
-		return nil, errors.New("Chunk TRKS missing from WOZ file")
+		return nil, errors.New("chunk TRKS missing from WOZ file")
 	}
 	if f.version == 1 {
 		i := 0
 		track := 0
 		for i+woz1TrackDataSize <= len(tracksData) {
 			var trackFooter woz1TrackFooter
-			binary.Read(bytes.NewReader(tracksData[i+woz1TrackFooterOffset:]), binary.LittleEndian, &trackFooter)
+			err := binary.Read(bytes.NewReader(tracksData[i+woz1TrackFooterOffset:]), binary.LittleEndian, &trackFooter)
+			if err != nil {
+				return nil, err
+			}
 			f.tracks[track].bitCount = uint32(trackFooter.BitCount)
 			f.tracks[track].data = tracksData[i : i+int(trackFooter.BytesUsed)]
 			i += woz1TrackDataSize
@@ -225,7 +237,10 @@ func NewFileWoz(data []uint8) (*FileWoz, error) {
 		reader := bytes.NewReader(tracksData)
 		for i := 0; i < wozMaxTrack; i++ {
 			var trackHeader woz2TrackHeader
-			binary.Read(reader, binary.LittleEndian, &trackHeader)
+			err := binary.Read(reader, binary.LittleEndian, &trackHeader)
+			if err != nil {
+				return nil, err
+			}
 			if trackHeader.BitCount != 0 {
 				f.tracks[i].bitCount = trackHeader.BitCount
 
@@ -236,7 +251,7 @@ func NewFileWoz(data []uint8) (*FileWoz, error) {
 			}
 		}
 	} else {
-		return nil, errors.New("Woz version not supported")
+		return nil, errors.New("woz version not supported")
 	}
 
 	return &f, nil

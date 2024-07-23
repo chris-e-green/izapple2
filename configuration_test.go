@@ -53,7 +53,10 @@ func TestCommandLineHelp(t *testing.T) {
 		prevFlags := flag.CommandLine
 		flag.CommandLine = flag.NewFlagSet("izapple2", flag.ExitOnError)
 
-		setupFlags(models, configuration)
+		err = setupFlags(models, configuration)
+		if err != nil {
+			t.Log(err.Error())
+		}
 
 		buffer := strings.Builder{}
 		flag.CommandLine.SetOutput(&buffer)
@@ -62,13 +65,16 @@ func TestCommandLineHelp(t *testing.T) {
 
 		flag.CommandLine = prevFlags
 
-		prevous, err := os.ReadFile("doc/usage.txt")
+		previous, err := os.ReadFile("doc/usage.txt")
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		if usage != string(prevous) {
-			os.WriteFile("doc/usage_new.txt", []byte(usage), 0644)
+		if usage != string(previous) {
+			err = os.WriteFile("doc/usage_new.txt", []byte(usage), 0644)
+			if err != nil {
+				t.Error(err.Error())
+			}
 			t.Errorf(`Usage has changed, check doc/usage_new.txt for the new version.
 If it is correct, execute \"go run update_readme.go\" in the doc folder.`)
 		}

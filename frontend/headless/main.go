@@ -113,7 +113,10 @@ func main() {
 			}
 
 		case "gif":
-			SaveGif(a, "snapshot.gif")
+			err := SaveGif(a, "snapshot.gif")
+			if err != nil {
+				return
+			}
 
 		default:
 			fmt.Println("Unknown command.")
@@ -205,9 +208,17 @@ func SaveGif(a *izapple2.Apple2, filename string) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func(f *os.File) {
+		err := f.Close()
+		if err != nil {
+			fmt.Printf("Error closing file: %v.\n", err)
+		}
+	}(f)
 
-	gif.EncodeAll(f, &animation)
+	err = gif.EncodeAll(f, &animation)
+	if err != nil {
+		return err
+	}
 	return nil
 
 }

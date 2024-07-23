@@ -154,7 +154,10 @@ func (a *Apple2) SetForceCaps(value bool) {
 func (a *Apple2) loadRom(filename string) error {
 	if a.board == "base64a" && filename == "<custom>" {
 		// The ROM of the base64a has several file and pages
-		loadBase64aRom(a)
+		err := loadBase64aRom(a)
+		if err != nil {
+			return err
+		}
 		return nil
 	}
 

@@ -1,6 +1,7 @@
 package screen
 
 import (
+	"fmt"
 	"image"
 	"image/color"
 	"image/png"
@@ -36,7 +37,7 @@ func Snapshot(vs VideoSource, screenMode int) *image.RGBA {
 	return snap
 }
 
-// SnapshotPaletted, snapshot of the currently visible screen as a paletted image
+// SnapshotPaletted snapshot of the currently visible screen as a paletted image
 func SnapshotPaletted(vs VideoSource, screenMode int) *image.Paletted {
 	img := Snapshot(vs, screenMode)
 	return palletedFilter(img)
@@ -143,9 +144,17 @@ func SaveSnapshot(vs VideoSource, screenMode int, filename string) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func(f *os.File) {
+		err := f.Close()
+		if err != nil {
+			fmt.Println(err)
+		}
+	}(f)
 
-	png.Encode(f, img)
+	err = png.Encode(f, img)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

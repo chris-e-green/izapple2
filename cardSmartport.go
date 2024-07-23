@@ -105,14 +105,17 @@ func (c *CardSmartPort) LoadImage(filename string, trace bool) error {
 	return err
 }
 
-// LoadImage loads a disk image
+// AddDevice adds a smartport device to the card
 func (c *CardSmartPort) AddDevice(device smartPortDevice) {
 	c.devices = append(c.devices, device)
 	c.hardDiskBlocks = 0 // Needed for the PRODOS status
 }
 
 func (c *CardSmartPort) assign(a *Apple2, slot int) {
-	c.loadRom(buildHardDiskRom(slot), cardRomSimple)
+	err := c.loadRom(buildHardDiskRom(slot), cardRomSimple)
+	if err != nil {
+		return
+	}
 
 	c.addCardSoftSwitchR(0, func() uint8 {
 		// Prodos entry point

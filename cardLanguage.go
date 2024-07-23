@@ -27,7 +27,7 @@ somewhere but doing so fails IIe self check.
 
 */
 
-// CardLanguage is an Language Card
+// CardLanguage is a Language Card
 type CardLanguage struct {
 	cardBase
 	readState  bool

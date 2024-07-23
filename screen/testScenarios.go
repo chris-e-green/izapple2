@@ -82,7 +82,12 @@ func (ts *TestScenario) save(dir string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer file.Close()
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			fmt.Println("Error closing file:", err)
+		}
+	}(file)
 
 	_, err = file.Write(bytes)
 	return file.Name(), err
@@ -162,15 +167,29 @@ func buildImageName(name string, screenMode int, altSet bool) string {
 
 func (ts *TestScenario) generateSnapshots(baseName string, altSet bool) error {
 	for _, screen := range ts.ScreenModes {
-		image := Snapshot(ts, screen)
-		imageName := buildImageName(baseName, screen, altSet)
-		f, err := os.Create(imageName)
+		err := func() error {
+			image := Snapshot(ts, screen)
+			imageName := buildImageName(baseName, screen, altSet)
+			f, err := os.Create(imageName)
+			if err != nil {
+				return err
+			}
+			defer func(f *os.File) {
+				err := f.Close()
+				if err != nil {
+					fmt.Println("Error closing file:", err)
+				}
+			}(f)
+
+			err = png.Encode(f, image)
+			if err != nil {
+				return err
+			}
+			return nil
+		}()
 		if err != nil {
 			return err
 		}
-		defer f.Close()
-
-		png.Encode(f, image)
 	}
 	return nil
 }

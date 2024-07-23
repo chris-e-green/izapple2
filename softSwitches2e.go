@@ -16,7 +16,7 @@ const (
 )
 
 func addApple2ESoftSwitches(io *ioC0Page) {
-	// New MMU read softswithes
+	// New MMU read softswitches
 	mmu := io.apple2.mmu
 	addSoftSwitchesMmu(io, 0x02, 0x03, 0x13, &mmu.altMainRAMActiveRead, "RAMRD")
 	addSoftSwitchesMmu(io, 0x04, 0x05, 0x14, &mmu.altMainRAMActiveWrite, "RAMWRT")
@@ -26,11 +26,11 @@ func addApple2ESoftSwitches(io *ioC0Page) {
 	mmu.slotC3ROMActive = false // Default behavior in II+ was true
 	addSoftSwitchesMmu(io, 0x00, 0x01, 0x18, &mmu.store80Active, "80STORE")
 
-	// New IOU read softswithes
+	// New IOU read softswitches
 	addSoftSwitchesIou(io, 0x0c, 0x0d, 0x1f, ioFlag80Col, "80COL")
 	addSoftSwitchesIou(io, 0x0e, 0x0f, 0x1e, ioFlagAltChar, "ALTCHARSET")
 
-	// Previous read softswithes
+	// Previous read softswitches
 	io.addSoftSwitchR(0x1A, getStatusSoftSwitch(io, ioFlagText), "TEXT")
 	io.addSoftSwitchR(0x1B, getStatusSoftSwitch(io, ioFlagMixed), "MIXED")
 	io.addSoftSwitchR(0x1C, getStatusSoftSwitch(io, ioFlagSecondPage), "PAGE2")

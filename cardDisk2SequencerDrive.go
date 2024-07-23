@@ -78,7 +78,7 @@ func (d *cardDisk2SequencerDrive) readPulse() bool {
 	}
 	bit := ((d.mc3470Buffer >> 1) & 0x1) != 0 // Use the previous to last bit to add latency
 	if d.mc3470Buffer == 0 && rand.Intn(100) < 30 {
-		// Four consecutive zeros. It'a a fake bit.
+		// Four consecutive zeros. It's a fake bit.
 		// Output a random value. 70% zero, 30% one
 		bit = true
 	}

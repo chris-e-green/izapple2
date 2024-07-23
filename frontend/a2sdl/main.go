@@ -37,8 +37,18 @@ func sdlRun(a *izapple2.Apple2) {
 	}
 	window.SetResizable(true)
 
-	defer window.Destroy()
-	defer renderer.Destroy()
+	defer func(window *sdl.Window) {
+		err := window.Destroy()
+		if err != nil {
+			fmt.Printf("Error destroying window: %v\n", err)
+		}
+	}(window)
+	defer func(renderer *sdl.Renderer) {
+		err := renderer.Destroy()
+		if err != nil {
+			fmt.Printf("Error destroying renderer: %v\n", err)
+		}
+	}(renderer)
 
 	title := "iz-" + a.Name + " (F1 for help)"
 	window.SetTitle(title)
@@ -135,11 +145,20 @@ func sdlRun(a *izapple2.Apple2) {
 					panic(err)
 				}
 
-				renderer.Clear()
-				renderer.Copy(texture, nil, nil)
+				err = renderer.Clear()
+				if err != nil {
+					return
+				}
+				err = renderer.Copy(texture, nil, nil)
+				if err != nil {
+					return
+				}
 				renderer.Present()
 				surface.Free()
-				texture.Destroy()
+				err = texture.Destroy()
+				if err != nil {
+					return
+				}
 			}
 		}
 		sdl.Delay(1000 / 30)

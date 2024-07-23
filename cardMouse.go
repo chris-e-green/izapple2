@@ -256,7 +256,7 @@ func (c *CardMouse) assign(a *Apple2, slot int) {
 	//data[0x0c] = 0x20
 	data[0xfb] = 0xd6
 
-	// Set 8 entrypoints to sofstwitches 2 to 1f
+	// Set 8 entry points to softswitches 2 to 1f
 	for i := uint8(0); i < 14; i++ {
 		base := 0x60 + 0x05*i
 		data[0x12+i] = base

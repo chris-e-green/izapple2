@@ -106,7 +106,12 @@ func (f *fileNib) saveNib(filename string) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			fmt.Printf("Error closing file: %v\n", err)
+		}
+	}(file)
 
 	for _, v := range f.track {
 		_, err := file.Write(v)
@@ -277,7 +282,7 @@ func findProlog(diskPrologByte3 uint8, data []byte, position int) int {
 func nibDecodeTrack(data []byte, logicalOrder *[16]int) ([]byte, error) {
 	b := make([]byte, bytesPerTrack) // Buffer slice with enough capacity
 
-	i := int(0)
+	i := 0
 	l := len(data)
 
 	for {
@@ -301,7 +306,7 @@ func nibDecodeTrack(data []byte, logicalOrder *[16]int) ([]byte, error) {
 		for j := 0; j < secondaryBufferSize; j++ {
 			w := sixAndTwoUntranslateTable[data[i%l]]
 			if w == -1 {
-				return nil, errors.New("Invalid byte from nib data")
+				return nil, errors.New("invalid byte from nib data")
 			}
 			v := byte(w) ^ prevV
 			prevV = v
@@ -320,7 +325,7 @@ func nibDecodeTrack(data []byte, logicalOrder *[16]int) ([]byte, error) {
 		for j := 0; j < primaryBufferSize; j++ {
 			w := sixAndTwoUntranslateTable[data[i%l]]
 			if w == -1 {
-				return nil, errors.New("Invalid byte from nib data")
+				return nil, errors.New("invalid byte from nib data")
 			}
 			v := byte(w) ^ prevV
 			b[dst+j] |= v << 2 // The elements of the secondary buffer are the 6 MSB bits

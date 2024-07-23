@@ -133,8 +133,8 @@ func (t *traceProDOS) dumpMLICall() {
 }
 
 func (t *traceProDOS) dumpMLIReturn() {
-	error, acc := t.a.cpu.GetCarryAndAcc()
-	if error {
+	err, acc := t.a.cpu.GetCarryAndAcc()
+	if err {
 		fmt.Printf("error $%02x: %v\n", acc, getMliErrorText(acc))
 	} else {
 		switch t.functionCode {
@@ -242,7 +242,7 @@ func (t *traceProDOS) dumpDevices() {
 		case 0xf:
 			id = "RAM"
 		}
-		fmt.Printf(("  S%vD%v %s($%02x)\n"), (value>>4)&7, (value>>7)+1, id, value)
+		fmt.Printf("  S%vD%v %s($%02x)\n", (value>>4)&7, (value>>7)+1, id, value)
 	}
 
 	// Device drivers

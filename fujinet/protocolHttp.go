@@ -1,6 +1,7 @@
 package fujinet
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -31,7 +32,12 @@ func (p *protocolHttp) ReadAll() ([]uint8, ErrorCode) {
 		if err != nil {
 			return nil, NetworkErrorGeneral
 		}
-		defer resp.Body.Close()
+		defer func(Body io.ReadCloser) {
+			err := Body.Close()
+			if err != nil {
+				fmt.Println(err)
+			}
+		}(resp.Body)
 
 		data, err := io.ReadAll(resp.Body)
 		if err != nil {

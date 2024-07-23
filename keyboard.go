@@ -7,7 +7,7 @@ type KeyboardProvider interface {
 	GetKey(strobe bool) (key uint8, ok bool)
 }
 
-// KeyboardChannel is a possible implemetation of a Keyboard provider
+// KeyboardChannel is a possible implementation of a Keyboard provider
 type KeyboardChannel struct {
 	keyChannel chan uint8
 	a          *Apple2
@@ -22,7 +22,7 @@ func NewKeyboardChannel(a *Apple2) *KeyboardChannel {
 	return &k
 }
 
-// PutText sends texts to the emulator as succesive chars
+// PutText sends texts to the emulator as successive chars
 func (k *KeyboardChannel) PutText(text string) {
 	for _, ch := range text {
 		k.PutRune(ch)

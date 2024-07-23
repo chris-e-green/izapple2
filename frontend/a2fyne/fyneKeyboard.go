@@ -51,7 +51,10 @@ func (k *keyboard) putKeyAction(keyEvent *fyne.KeyEvent, press bool) {
 		case fyne.KeyF1:
 			k.s.a.SendCommand(izapple2.CommandReset)
 		case fyne.KeyF12:
-			screen.AddScenario(k.s.a, "../../screen/test_resources/")
+			err := screen.AddScenario(k.s.a, "../../screen/test_resources/")
+			if err != nil {
+				return
+			}
 		}
 	}
 

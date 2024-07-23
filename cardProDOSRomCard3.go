@@ -45,7 +45,10 @@ func newCardProDOSRomCard3Builder() *cardBuilder {
 
 			var c CardProDOSRomCard3
 			c.data = data
-			c.loadRom(data[0x200:0x300], cardRomSimple)
+			err = c.loadRom(data[0x200:0x300], cardRomSimple)
+			if err != nil {
+				return nil, err
+			}
 			c.romC8xx = &c
 			return &c, nil
 		},
@@ -76,7 +79,10 @@ func newCardProDOSNVRAMDriveBuilder() *cardBuilder {
 
 			var c CardProDOSRomCard3
 			c.data = data
-			c.loadRom(data[0x200:0x400], cardRomSimple)
+			err = c.loadRom(data[0x200:0x400], cardRomSimple)
+			if err != nil {
+				return nil, err
+			}
 			c.romC8xx = &c
 			c.nvram = true
 			return &c, nil

@@ -47,7 +47,7 @@ type VideoSource interface {
 	GetTextMemory(secondPage bool, ext bool) []uint8
 	// GetVideoMemory returns a slice to the video memory pages
 	GetVideoMemory(secondPage bool, ext bool) []uint8
-	// GetCharactePixel returns the pixel as output by the character generator
+	// GetCharacterPixel returns the pixel as output by the character generator
 	GetCharacterPixel(char uint8, rowInChar int, colInChar int, isAltText bool, isFlashedFrame bool) bool
 	// GetSuperVideoMemory returns a slice to the SHR video memory
 	GetSuperVideoMemory() []uint8

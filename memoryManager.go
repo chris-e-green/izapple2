@@ -171,7 +171,7 @@ func (mmu *memoryManager) accessRead(address uint16) memoryHandler {
 			return mmu.getPhysicalMainRAM(altPage)
 		}
 		hires := mmu.apple2.io.isSoftSwitchActive(ioFlagHiRes)
-		if hires && address >= addressStartHgr && address <= addressLimitHgr {
+		if hires && address >= addressStartHgr {
 			return mmu.getPhysicalMainRAM(altPage)
 		}
 	}
@@ -204,7 +204,7 @@ func (mmu *memoryManager) accessWrite(address uint16) memoryHandler {
 			return mmu.getPhysicalMainRAM(altPage)
 		}
 		hires := mmu.apple2.io.isSoftSwitchActive(ioFlagHiRes)
-		if hires && address >= addressStartHgr && address <= addressLimitHgr {
+		if hires && address >= addressStartHgr {
 			return mmu.getPhysicalMainRAM(altPage)
 		}
 	}
@@ -246,7 +246,7 @@ func (mmu *memoryManager) Peek(address uint16) uint8 {
 	return value
 }
 
-// Peek returns the data on the given address optimized for more local requests
+// PeekCode returns the data on the given address optimized for more local requests
 func (mmu *memoryManager) PeekCode(address uint16) uint8 {
 	page := address & 0xff00
 	var mh memoryHandler

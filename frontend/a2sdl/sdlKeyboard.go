@@ -129,7 +129,10 @@ func (k *sdlKeyboard) putKey(keyEvent *sdl.KeyboardEvent) {
 		fallthrough
 	case sdl.K_PRINTSCREEN:
 		if ctrl {
-			screen.AddScenario(k.a, "../../screen/test_resources/")
+			err := screen.AddScenario(k.a, "../../screen/test_resources/")
+			if err != nil {
+				return
+			}
 		} else {
 			err := screen.SaveSnapshot(k.a, screen.ScreenModeNTSC, "snapshot.png")
 			if err != nil {

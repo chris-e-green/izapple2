@@ -46,5 +46,5 @@ func MakeDiskette(data []byte, filename string, writeable bool) (Diskette, error
 		return newDisquetteWoz(f)
 	}
 
-	return nil, errors.New("Diskette format not supported")
+	return nil, errors.New("diskette format not supported")
 }
