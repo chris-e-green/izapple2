@@ -40,7 +40,11 @@ func (s *state) DefaultTitle() string {
 
 func main() {
 	var s state
-	s.a = izapple2.MainApple()
+	var err error
+	s.a, err = izapple2.CreateConfiguredApple()
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+	}
 	if s.a != nil {
 		if s.a.IsProfiling() {
 			// See the log with:
@@ -91,11 +95,12 @@ func fyneRun(s *state) {
 			case <-ticker.C:
 				if !s.a.IsPaused() {
 					var img *image.RGBA
+					vs := s.a.GetVideoSource()
 					if s.showPages {
-						img = screen.SnapshotParts(s.a, s.screenMode)
-						s.win.SetTitle(fmt.Sprintf("%v %v %vx%v", s.a.Name, screen.VideoModeName(s.a), img.Rect.Dx()/2, img.Rect.Dy()/2))
+						img = screen.SnapshotParts(vs, s.screenMode)
+						s.win.SetTitle(fmt.Sprintf("%v %v %vx%v", s.a.Name, screen.VideoModeName(vs), img.Rect.Dx()/2, img.Rect.Dy()/2))
 					} else {
-						img = screen.Snapshot(s.a, s.screenMode)
+						img = screen.Snapshot(vs, s.screenMode)
 					}
 					display.Image = img
 					canvas.Refresh(display)
@@ -118,21 +123,21 @@ func registerKeyboardEvents(s *state) {
 
 	// Events
 	canvas.SetOnTypedKey(func(ke *fyne.KeyEvent) {
-		//fmt.Printf("Event: %v\n", ke.Name)
+		// fmt.Printf("Event: %v\n", ke.Name)
 		kp.putKey(ke)
 	})
 	canvas.SetOnTypedRune(func(ch rune) {
-		//fmt.Printf("Rune: %v\n", ch)
+		// fmt.Printf("Rune: %v\n", ch)
 		kp.putRune(ch)
 	})
 	if deskCanvas, ok := canvas.(desktop.Canvas); ok {
 		deskCanvas.SetOnKeyDown(func(ke *fyne.KeyEvent) {
 			kp.putKeyAction(ke, true)
-			//fmt.Printf("Event down: %v\n", ke.Name)
+			// fmt.Printf("Event down: %v\n", ke.Name)
 		})
 		deskCanvas.SetOnKeyUp(func(ke *fyne.KeyEvent) {
 			kp.putKeyAction(ke, false)
-			//fmt.Printf("Event up: %v\n", ke.Name)
+			// fmt.Printf("Event up: %v\n", ke.Name)
 		})
 	}
 }

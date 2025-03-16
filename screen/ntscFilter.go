@@ -7,9 +7,10 @@ import (
 )
 
 /*
-	See:
-		https://mrob.com/pub/xapple2/colors.html
-		https://archive.org/details/IIgs_2523063_Master_Color_Values
+See:
+
+	https://mrob.com/pub/xapple2/colors.html
+	https://archive.org/details/IIgs_2523063_Master_Color_Values
 */
 var ntscColorMap = [16]color.Color{
 	color.RGBA{0, 0, 0, 255},       // Black
@@ -37,7 +38,7 @@ func buildAttenuatedColorMap(colorMap [16]color.Color) [16]color.Color {
 	for i := 0; i < len(colorMap); i++ {
 		r, g, b, _ := colorMap[i].RGBA()
 		colors[i] = color.RGBA64{
-			uint16(r / 2), uint16(g / 2), uint16(b / 2),
+			uint16(4 * r / 5), uint16(4 * g / 5), uint16(4 * b / 5),
 			65535,
 		}
 	}

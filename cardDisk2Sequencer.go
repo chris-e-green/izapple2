@@ -22,7 +22,9 @@ See:
 type CardDisk2Sequencer struct {
 	cardBase
 
-	p6ROM      []uint8
+	sectors13 bool
+	p6ROM     []uint8
+
 	q          [8]bool // 8-bit latch SN74LS259
 	register   uint8   // 8-bit shift/storage register SN74LS323
 	sequence   uint8   // 4 bits stored in an hex flip-flop SN74LS174
@@ -37,6 +39,11 @@ type CardDisk2Sequencer struct {
 	trackTracer trackTracer
 }
 
+// Shared methods between both versions on the Disk II card
+type cardDisk2Shared interface {
+	setTrackTracer(tt trackTracer)
+}
+
 const (
 	disk2MotorOffDelay = uint64(2 * 1000 * 1000) // 2 Mhz cycles. Total 1 second.
 	disk2PulseCyles    = uint8(8)                // 8 cycles = 4ms * 2Mhz
@@ -49,27 +56,71 @@ const (
 	disk2CyclestoLoseSsync = 100000
 )
 
-// NewCardDisk2Sequencer creates a new CardDisk2Sequencer
-func NewCardDisk2Sequencer(trackTracer trackTracer) *CardDisk2Sequencer {
-	var c CardDisk2Sequencer
-	c.name = "Disk II"
-	c.trackTracer = trackTracer
-	c.loadRomFromResource("<internal>/DISK2.rom")
+func newCardDisk2SequencerBuilder() *cardBuilder {
+	return &cardBuilder{
+		name:        "Disk II Sequencer",
+		description: "Disk II interface card emulating the Woz state machine",
+		defaultParams: &[]paramSpec{
+			{"disk1", "Diskette image for drive 1", ""},
+			{"disk2", "Diskette image for drive 2", ""},
+			{"tracktracer", "Trace how the disk head moves between tracks", "false"},
+		},
+		buildFunc: func(params map[string]string) (Card, error) {
+			var c CardDisk2Sequencer
 
-	data, _, err := LoadResource("<internal>/DISK2P6.rom")
-	if err != nil {
-		// The resource should be internal and never fail
-		panic(err)
+			disk1 := paramsGetString(params, "disk1")
+			if disk1 != "" {
+				err := c.drive[0].insertDiskette(disk1)
+				if err != nil {
+					return nil, err
+				}
+				c.sectors13 = c.drive[0].data.Info.BootSectorFormat == 2 // Woz 13 sector disk
+			}
+
+			disk2 := paramsGetString(params, "disk2")
+			if disk2 != "" {
+				err := c.drive[1].insertDiskette(disk2)
+				if err != nil {
+					return nil, err
+				}
+			}
+
+			P5RomFile := "<internal>/Apple Disk II 16 Sector Interface Card ROM P5 - 341-0027.bin"
+			P6RomFile := "<internal>/Apple Disk II 16 Sector Interface Card ROM P6 - 341-0028.bin"
+			if c.sectors13 {
+				P5RomFile = "<internal>/Apple Disk II 13 Sector Interface Card ROM P5 - 341-0009.bin"
+				// Buggy sequencer not need for 13 sectors disks to work
+				// P6RomFile = "<internal>/Apple Disk II 13 Sector Interface Card ROM P6 - 341-0010.bin"
+			}
+
+			err := c.loadRomFromResource(P5RomFile, cardRomSimple)
+			if err != nil {
+				return nil, err
+			}
+
+			data, _, err := LoadResource(P6RomFile)
+			if err != nil {
+				return nil, err
+			}
+			c.p6ROM = data
+
+			trackTracer := paramsGetBool(params, "tracktracer")
+			if trackTracer {
+				c.trackTracer = makeTrackTracerLogger()
+			}
+			return &c, nil
+		},
 	}
-	c.p6ROM = data
-
-	return &c
 }
 
 // GetInfo returns card info
 func (c *CardDisk2Sequencer) GetInfo() map[string]string {
 	info := make(map[string]string)
-	info["rom"] = "16 sector"
+	if c.sectors13 {
+		info["rom"] = "13 sector"
+	} else {
+		info["rom"] = "16 sector"
+	}
 	// TODO: add drives info
 	return info
 }
@@ -79,11 +130,15 @@ func (c *CardDisk2Sequencer) reset() {
 	c.q = [8]bool{}
 }
 
+func (c *CardDisk2Sequencer) setTrackTracer(tt trackTracer) {
+	c.trackTracer = tt
+}
+
 func (c *CardDisk2Sequencer) assign(a *Apple2, slot int) {
 	a.registerRemovableMediaDrive(&c.drive[0])
 	a.registerRemovableMediaDrive(&c.drive[1])
 
-	c.addCardSoftSwitches(func(address uint8, data uint8, write bool) uint8 {
+	c.addCardSoftSwitches(func(address uint8, data uint8, _ bool) uint8 {
 		/*
 			Slot card pins to SN74LS259 latch mapping:
 				slot_address[3,2,1] => latch_address[2,1,0]
@@ -132,7 +187,7 @@ func updateDriveState(address uint8, c *CardDisk2Sequencer) {
 }
 
 func (c *CardDisk2Sequencer) catchUp(data uint8) {
-	currentCycle := c.a.cpu.GetCycles() << 1 // Disk2 cycles are x2 cpu cycle
+	currentCycle := c.a.GetCycles() << 1 // Disk2 cycles are x2 cpu cycle
 
 	motorOn := c.step(data, true)
 	if motorOn && currentCycle > c.lastCycle+disk2CyclestoLoseSsync {
@@ -273,7 +328,7 @@ func (c *CardDisk2Sequencer) step(data uint8, firstStep bool) bool {
 			c.register = (c.register << 1) | ((inst >> 2) & 1)
 		case 2:
 			// Shift right bringing wProt
-			c.register = c.register >> 1
+			c.register >>= 1
 			if wProt {
 				c.register |= 0x80
 			}
@@ -292,7 +347,7 @@ func (c *CardDisk2Sequencer) step(data uint8, firstStep bool) bool {
 		}
 	}
 
-	//fmt.Printf("[D2SEQ] Step. seq:%x inst:%x next:%x reg:%02x\n",
+	// fmt.Printf("[D2SEQ] Step. seq:%x inst:%x next:%x reg:%02x\n",
 	//	c.sequence, inst, next, c.register)
 
 	c.sequence = next

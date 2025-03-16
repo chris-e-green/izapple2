@@ -29,10 +29,7 @@ type disketteWoz struct {
 func newDisquetteWoz(f *FileWoz) (*disketteWoz, error) {
 	// Discard not supported features
 	if f.Info.DiskType != 1 {
-		return nil, errors.New("Only 5.25 disks are supported")
-	}
-	if f.Info.BootSectorFormat == 2 { // Info not available in WOZ 1.0
-		return nil, errors.New("Woz 13 sector disks are not supported")
+		return nil, errors.New("only 5.25 disks are supported")
 	}
 
 	var d disketteWoz
@@ -74,7 +71,7 @@ func (d *disketteWoz) Read(quarterTrack int, cycle uint64) uint8 {
 		d.latch = (d.latch << 1) + bit
 		if d.latch >= 0x80 {
 			// Valid byte, store value a bit longer and clear the internal latch
-			//fmt.Printf("Valid 0x%.2x\n", d.latch)
+			// fmt.Printf("Valid 0x%.2x\n", d.latch)
 			d.visibleLatch = d.latch
 			d.visibleLatchCountDown = 1
 			d.latch = 0
@@ -87,7 +84,7 @@ func (d *disketteWoz) Read(quarterTrack int, cycle uint64) uint8 {
 		}
 	}
 
-	//fmt.Printf("Visible: 0x%.2x, latch: 0x%.2x, bits: %v, cycles: %v\n", d.visibleLatch, d.latch, deltaBits, cycle-d.cycle)
+	// fmt.Printf("Visible: 0x%.2x, latch: 0x%.2x, bits: %v, cycles: %v\n", d.visibleLatch, d.latch, deltaBits, cycle-d.cycle)
 
 	// Update the internal last cycle without losing the remainder not processed
 	d.cycle += deltaBits * cyclesPerBit
@@ -97,4 +94,8 @@ func (d *disketteWoz) Read(quarterTrack int, cycle uint64) uint8 {
 
 func (d *disketteWoz) Write(quarterTrack int, value uint8, _ uint64) {
 	panic("Write not implemented on woz disk implementation")
+}
+
+func (d *disketteWoz) Is13Sectors() bool {
+	return d.data.version == 2 && d.data.Info.BootSectorFormat == 2
 }

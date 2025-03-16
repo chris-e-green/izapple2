@@ -26,14 +26,21 @@ const (
 	deviceDateTimeVector uint16 = 0xbf07 // DATETIME+1
 )
 
-func newTraceProDOS(a *Apple2) *traceProDOS {
+func newTraceProDOS() *traceProDOS {
 	var t traceProDOS
-	t.a = a
 	t.deviceDrivers = make([]uint16, 0)
 	return &t
 }
 
+func (t *traceProDOS) connect(a *Apple2) {
+	t.a = a
+}
+
 func (t *traceProDOS) inspect() {
+	if t.a.dmaActive {
+		return
+	}
+
 	pc, _ := t.a.cpu.GetPCAndSP()
 	if pc == mliAddress {
 		/*
@@ -54,11 +61,9 @@ func (t *traceProDOS) inspect() {
 		t.dumpMLICall()
 		t.refreshDeviceDrives()
 		t.callPending = true
-		//t.a.cpu.SetTrace(true)
 	} else if t.callPending && pc == t.returnAddress {
 		t.dumpMLIReturn()
 		t.callPending = false
-		//t.a.cpu.SetTrace(false)
 	} else if pc == biAddress {
 		t.dumpBIExec()
 	} else if /*t.callPending &&*/ t.isDriverAddress(pc) {
@@ -214,7 +219,7 @@ func (t *traceProDOS) dumpDriverCall() {
 	if int(command) < len(proDosCommandNames) {
 		commandName = proDosCommandNames[command]
 	}
-	fmt.Printf("\n  Prodos driver $%04x command %02x-%s on unit $%x, block %v to $%04x ==> ", pc, command, commandName, unit, block, address)
+	fmt.Printf("\n  Prodos driver $%04x command %02x-%s on unit $%x, block %v to/from $%04x ==> ", pc, command, commandName, unit, block, address)
 }
 
 //lint:ignore U1000 unused but stays as reference

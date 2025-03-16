@@ -51,7 +51,7 @@ func (k *keyboard) putKeyAction(keyEvent *fyne.KeyEvent, press bool) {
 		case fyne.KeyF1:
 			k.s.a.SendCommand(izapple2.CommandReset)
 		case fyne.KeyF12:
-			screen.AddScenario(k.s.a, "../../screen/test_resources/")
+			screen.AddScenario(k.s.a.GetVideoSource(), "../../screen/test_resources/")
 		}
 	}
 
@@ -74,7 +74,7 @@ func (k *keyboard) putKey(keyEvent *fyne.KeyEvent) {
 	*/
 
 	// Keys with control are not generating events in putKey()
-	//ctrl := k.controlLeft || k.controlRight
+	// ctrl := k.controlLeft || k.controlRight
 
 	result := uint8(0)
 	switch keyEvent.Name {
@@ -113,11 +113,7 @@ func (k *keyboard) putKey(keyEvent *fyne.KeyEvent) {
 	case fyne.KeyF5:
 		k.s.a.SendCommand(izapple2.CommandShowSpeed)
 	case fyne.KeyF6:
-		if k.s.screenMode != screen.ScreenModeGreen {
-			k.s.screenMode = screen.ScreenModeGreen
-		} else {
-			k.s.screenMode = screen.ScreenModeNTSC
-		}
+		k.s.screenMode = screen.NextScreenMode(k.s.screenMode)
 	case fyne.KeyF7:
 		k.s.showPages = !k.s.showPages
 	case fyne.KeyF9:
@@ -127,14 +123,14 @@ func (k *keyboard) putKey(keyEvent *fyne.KeyEvent) {
 	case fyne.KeyF11:
 		k.s.a.SendCommand(izapple2.CommandToggleCPUTrace)
 	case fyne.KeyF12:
-		//case fyne.KeyPrintScreen:
-		err := screen.SaveSnapshot(k.s.a, k.s.screenMode, "snapshot.png")
+		// case fyne.KeyPrintScreen:
+		err := screen.SaveSnapshot(k.s.a.GetVideoSource(), k.s.screenMode, "snapshot.png")
 		if err != nil {
 			fmt.Printf("Error saving snapshoot: %v.\n.", err)
 		} else {
 			fmt.Println("Saving snapshot")
 		}
-		//case fyne.KeyPause:
+		// case fyne.KeyPause:
 		//	k.s.a.SendCommand(izapple2.CommandPauseUnpause)
 	}
 

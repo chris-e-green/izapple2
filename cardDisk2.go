@@ -25,9 +25,12 @@ NIB: 35 tracks 6656 bytes, 232960 bytes
 // CardDisk2 is a DiskII interface card
 type CardDisk2 struct {
 	cardBase
+	sectors13 bool
+
 	selected int  // q5, Only 0 and 1 supported
 	power    bool // q4
 	drive    [2]cardDisk2Drive
+	fastMode bool
 
 	dataLatch uint8
 	q6        bool
@@ -47,19 +50,68 @@ type cardDisk2Drive struct {
 	trackStep int   // Step motor for tracks position. 4 steps per track
 }
 
-// NewCardDisk2 creates a new CardDisk2
-func NewCardDisk2(trackTracer trackTracer) *CardDisk2 {
-	var c CardDisk2
-	c.name = "Disk II"
-	c.trackTracer = trackTracer
-	c.loadRomFromResource("<internal>/DISK2.rom")
-	return &c
+func newCardDisk2Builder() *cardBuilder {
+	return &cardBuilder{
+		name:        "Disk II",
+		description: "Disk II interface card",
+		defaultParams: &[]paramSpec{
+			{"disk1", "Diskette image for drive 1", ""},
+			{"disk2", "Diskette image for drive 2", ""},
+			{"tracktracer", "Trace how the disk head moves between tracks", "false"},
+			{"fast", "Enable CPU burst when accessing the disk", "true"},
+			{"sectors13", "Use 13 sectors per track ROM", "false"},
+		},
+		buildFunc: func(params map[string]string) (Card, error) {
+			var c CardDisk2
+			c.sectors13 = paramsGetBool(params, "sectors13")
+
+			disk1 := paramsGetPath(params, "disk1")
+			if disk1 != "" {
+				err := c.drive[0].insertDiskette(disk1)
+				if err != nil {
+					return nil, err
+				}
+				if c.drive[0].diskette.Is13Sectors() && !c.sectors13 {
+					// Auto configure for 13 sectors per track
+					c.sectors13 = true
+				}
+			}
+			disk2 := paramsGetPath(params, "disk2")
+			if disk2 != "" {
+				err := c.drive[1].insertDiskette(disk2)
+				if err != nil {
+					return nil, err
+				}
+			}
+
+			P5RomFile := "<internal>/Apple Disk II 16 Sector Interface Card ROM P5 - 341-0027.bin"
+			if c.sectors13 {
+				P5RomFile = "<internal>/Apple Disk II 13 Sector Interface Card ROM P5 - 341-0009.bin"
+			}
+
+			err := c.loadRomFromResource(P5RomFile, cardRomSimple)
+			if err != nil {
+				return nil, err
+			}
+
+			trackTracer := paramsGetBool(params, "tracktracer")
+			if trackTracer {
+				c.trackTracer = makeTrackTracerLogger()
+			}
+			c.fastMode = paramsGetBool(params, "fast")
+			return &c, nil
+		},
+	}
 }
 
 // GetInfo returns disk2 info
 func (c *CardDisk2) GetInfo() map[string]string {
 	info := make(map[string]string)
-	info["rom"] = "16 sector"
+	if c.sectors13 {
+		info["rom"] = "13 sector"
+	} else {
+		info["rom"] = "16 sector"
+	}
 	info["power"] = strconv.FormatBool(c.power)
 
 	info["D1 name"] = c.drive[0].name
@@ -80,6 +132,10 @@ func (c *CardDisk2) reset() {
 	c.q7 = false
 }
 
+func (c *CardDisk2) setTrackTracer(tt trackTracer) {
+	c.trackTracer = tt
+}
+
 func (c *CardDisk2) assign(a *Apple2, slot int) {
 	a.registerRemovableMediaDrive(&c.drive[0])
 	a.registerRemovableMediaDrive(&c.drive[1])
@@ -87,7 +143,7 @@ func (c *CardDisk2) assign(a *Apple2, slot int) {
 	// Q1, Q2, Q3 and Q4 phase control soft switches,
 	for i := uint8(0); i < 4; i++ {
 		phase := i
-		c.addCardSoftSwitchR(phase<<1, func() uint8 {
+		c.addCardSoftSwitchRW(phase<<1, func() uint8 {
 			// Update magnets and position
 			drive := &c.drive[c.selected]
 			drive.phases &^= (1 << phase)
@@ -100,7 +156,7 @@ func (c *CardDisk2) assign(a *Apple2, slot int) {
 			return c.dataLatch // All even addresses return the last dataLatch
 		}, fmt.Sprintf("PHASE%vOFF", phase))
 
-		c.addCardSoftSwitchR((phase<<1)+1, func() uint8 { // Update magnets and position
+		c.addCardSoftSwitchRW((phase<<1)+1, func() uint8 { // Update magnets and position
 			drive := &c.drive[c.selected]
 			drive.phases |= (1 << phase)
 			drive.trackStep = moveDriveStepper(drive.phases, drive.trackStep)
@@ -114,21 +170,21 @@ func (c *CardDisk2) assign(a *Apple2, slot int) {
 	}
 
 	// Q4, power switch
-	c.addCardSoftSwitchR(0x8, func() uint8 {
+	c.addCardSoftSwitchRW(0x8, func() uint8 {
 		c.softSwitchQ4(false)
 		return c.dataLatch
 	}, "Q4DRIVEOFF")
-	c.addCardSoftSwitchR(0x9, func() uint8 {
+	c.addCardSoftSwitchRW(0x9, func() uint8 {
 		c.softSwitchQ4(true)
 		return 0
 	}, "Q4DRIVEON")
 
-	// Q5, drive selection
-	c.addCardSoftSwitchR(0xA, func() uint8 {
+	// Q5, drive selecion
+	c.addCardSoftSwitchRW(0xA, func() uint8 {
 		c.softSwitchQ5(0)
 		return c.dataLatch
 	}, "Q5SELECT1")
-	c.addCardSoftSwitchR(0xB, func() uint8 {
+	c.addCardSoftSwitchRW(0xB, func() uint8 {
 		c.softSwitchQ5(1)
 		return 0
 	}, "Q5SELECT2")
@@ -151,18 +207,22 @@ func (c *CardDisk2) softSwitchQ4(value bool) {
 	if !value && c.power {
 		// Turn off
 		c.power = false
-		c.a.ReleaseFastMode()
+		if c.fastMode {
+			c.a.ReleaseFastMode()
+		}
 		drive := &c.drive[c.selected]
 		if drive.diskette != nil {
-			drive.diskette.PowerOff(c.a.cpu.GetCycles())
+			drive.diskette.PowerOff(c.a.GetCycles())
 		}
 	} else if value && !c.power {
 		// Turn on
 		c.power = true
-		c.a.RequestFastMode()
+		if c.fastMode {
+			c.a.RequestFastMode()
+		}
 		drive := &c.drive[c.selected]
 		if drive.diskette != nil {
-			drive.diskette.PowerOn(c.a.cpu.GetCycles())
+			drive.diskette.PowerOn(c.a.GetCycles())
 		}
 	}
 	select {
@@ -180,10 +240,10 @@ func (c *CardDisk2) softSwitchQ5(selected int) {
 	if c.power && c.selected != selected {
 		// Selected changed with power on, power goes to the other disk
 		if c.drive[c.selected].diskette != nil {
-			c.drive[c.selected].diskette.PowerOff(c.a.cpu.GetCycles())
+			c.drive[c.selected].diskette.PowerOff(c.a.GetCycles())
 		}
 		if c.drive[selected].diskette != nil {
-			c.drive[selected].diskette.PowerOn(c.a.cpu.GetCycles())
+			c.drive[selected].diskette.PowerOn(c.a.GetCycles())
 		}
 	}
 
@@ -220,9 +280,9 @@ func (c *CardDisk2) processQ6Q7(in uint8) {
 	}
 	if !c.q6 { // shift
 		if !c.q7 { // Q6L-Q7L: Read
-			c.dataLatch = d.diskette.Read(d.trackStep, c.a.cpu.GetCycles())
+			c.dataLatch = d.diskette.Read(d.trackStep, c.a.GetCycles())
 		} else { // Q6L-Q7H: Write the dataLatch value to disk. Shift data out
-			d.diskette.Write(d.trackStep, c.dataLatch, c.a.cpu.GetCycles())
+			d.diskette.Write(d.trackStep, c.dataLatch, c.a.GetCycles())
 		}
 	} else { // load
 		if !c.q7 { // Q6H-Q7L: Sense write protect / prewrite state
@@ -235,7 +295,7 @@ func (c *CardDisk2) processQ6Q7(in uint8) {
 
 	/*
 		if c.dataLatch >= 0x80 {
-			fmt.Printf("Datalach: 0x%.2x in cycle %v\n", c.dataLatch, c.a.cpu.GetCycles())
+			fmt.Printf("Datalach: 0x%.2x in cycle %v\n", c.dataLatch, c.a.GetCycles())
 		}
 	*/
 }

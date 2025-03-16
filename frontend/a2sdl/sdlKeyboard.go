@@ -12,6 +12,7 @@ type sdlKeyboard struct {
 	a          *izapple2.Apple2
 	keyChannel *izapple2.KeyboardChannel
 
+	showHelp    bool
 	showPages   bool
 	showCharGen bool
 	showAltText bool
@@ -40,6 +41,7 @@ func (k *sdlKeyboard) putKey(keyEvent *sdl.KeyboardEvent) {
 		20 PRINT A, A - 128
 		30 GOTO 10
 	*/
+
 	if keyEvent.Type != sdl.KEYDOWN {
 		// Process only key pushes
 		return
@@ -87,14 +89,18 @@ func (k *sdlKeyboard) putKey(keyEvent *sdl.KeyboardEvent) {
 		result = 127 // 24 in the Base64A
 
 	// Base64A clone particularities
-	case sdl.K_F2:
+	case sdl.K_F3:
 		result = 127 // Base64A
 
 	// Control of the emulator
 	case sdl.K_F1:
+		k.showHelp = !k.showHelp
+	case sdl.K_F2:
 		if ctrl {
 			k.a.SendCommand(izapple2.CommandReset)
 		}
+	case sdl.K_F4:
+		k.a.SendCommand(izapple2.CommandToggleCPUTrace)
 	case sdl.K_F5:
 		if ctrl {
 			k.a.SendCommand(izapple2.CommandShowSpeed)
@@ -102,11 +108,7 @@ func (k *sdlKeyboard) putKey(keyEvent *sdl.KeyboardEvent) {
 			k.a.SendCommand(izapple2.CommandToggleSpeed)
 		}
 	case sdl.K_F6:
-		if k.screenMode == screen.ScreenModeNTSC {
-			k.screenMode = screen.ScreenModeGreen
-		} else {
-			k.screenMode = screen.ScreenModeNTSC
-		}
+		k.screenMode = screen.NextScreenMode(k.screenMode)
 	case sdl.K_F7:
 		k.showPages = !k.showPages
 	case sdl.K_F9:
@@ -119,16 +121,18 @@ func (k *sdlKeyboard) putKey(keyEvent *sdl.KeyboardEvent) {
 		} else {
 			k.a.SendCommand(izapple2.CommandNextCharGenPage)
 		}
-	case sdl.K_F11:
-		k.a.SendCommand(izapple2.CommandToggleCPUTrace)
 	case sdl.K_F12:
 		fallthrough
 	case sdl.K_PRINTSCREEN:
-		err := screen.SaveSnapshot(k.a, screen.ScreenModeNTSC, "snapshot.png")
-		if err != nil {
-			fmt.Printf("Error saving snapshoot: %v.\n.", err)
+		if ctrl {
+			screen.AddScenario(k.a.GetVideoSource(), "../../screen/test_resources/")
 		} else {
-			fmt.Println("Saving snapshot 'snapshot.png'")
+			err := screen.SaveSnapshot(k.a.GetVideoSource(), screen.ScreenModeNTSC, "snapshot.png")
+			if err != nil {
+				fmt.Printf("Error saving snapshoot: %v.\n.", err)
+			} else {
+				fmt.Println("Saving snapshot 'snapshot.png'")
+			}
 		}
 	case sdl.K_PAUSE:
 		k.a.SendCommand(izapple2.CommandPauseUnpause)

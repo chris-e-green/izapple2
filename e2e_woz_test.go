@@ -5,18 +5,24 @@ import (
 )
 
 func testWoz(t *testing.T, sequencer bool, file string, expectedTracks []int, cycleLimit uint64) {
-	at := makeApple2Tester("2enh")
-	tt := makeTrackTracerSummary()
 
-	var err error
+	overrides := newConfiguration()
 	if sequencer {
-		err = at.a.AddDisk2Sequencer(6, "woz_test_images/"+file, "", tt)
+		overrides.set(confS6, "diskiiseq,disk1=\"woz_test_images/"+file+"\"")
 	} else {
-		err = at.a.AddDisk2(6, "woz_test_images/"+file, "", tt)
+		overrides.set(confS6, "diskii,disk1=\"woz_test_images/"+file+"\"")
 	}
+	at, err := makeApple2Tester("2enh", overrides)
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
+
+	diskIIcard, ok := at.a.cards[6].(cardDisk2Shared)
+	if !ok {
+		t.Fatal("Not a disk II card")
+	}
+	tt := makeTrackTracerSummary()
+	diskIIcard.setTrackTracer(tt)
 
 	expectedLen := len(expectedTracks)
 
@@ -24,7 +30,7 @@ func testWoz(t *testing.T, sequencer bool, file string, expectedTracks []int, cy
 		tracksMayMatch := len(tt.quarterTracks) >= expectedLen &&
 			tt.quarterTracks[expectedLen-1] == expectedTracks[expectedLen-1]
 
-		return tracksMayMatch || a.cpu.GetCycles() > cycleLimit
+		return tracksMayMatch || a.GetCycles() > cycleLimit
 	}
 	at.run()
 
@@ -32,7 +38,7 @@ func testWoz(t *testing.T, sequencer bool, file string, expectedTracks []int, cy
 		t.Errorf("Quarter tracks, expected %#v, got %#v", expectedTracks, tt.quarterTracks)
 	}
 
-	//t.Errorf("Cycles: %d vs  %d", at.a.cpu.GetCycles(), cycleLimit)
+	// t.Errorf("Cycles: %d vs  %d", at.a.GetCycles(), cycleLimit)
 }
 
 const (
@@ -49,9 +55,9 @@ func TestWoz(t *testing.T) {
 		cycleLimit     uint64
 		expectedTracks []int
 	}{
-		// How to being
-		// DOS 3.2, requires 13 sector disks
-		{"DOS3.3", all, "DOS 3.3 System Master.woz", 11_000_000, []int{0, 8, 0, 76, 68, 84, 68, 84, 68, 92, 16, 24}},
+		// How to begin
+		{"DOS 3.2", all, "DOS 3.2 System Master.woz", 7_000_000, []int{0, 72}},
+		{"DOS 3.3", all, "DOS 3.3 System Master.woz", 11_000_000, []int{0, 8, 0, 76, 68, 84, 68, 84, 68, 92, 16, 24}},
 
 		// Next choices
 		{"Bouncing Kamungas", all, "Bouncing Kamungas - Disk 1, Side A.woz", 30_000_000, []int{0, 32, 0, 40, 0}},

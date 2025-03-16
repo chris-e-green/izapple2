@@ -14,7 +14,10 @@ import (
 )
 
 func main() {
-	a := izapple2.MainApple()
+	a, err := izapple2.CreateConfiguredApple()
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+	}
 	fe := &headLessFrontend{}
 	fe.keyChannel = make(chan uint8, 200)
 	a.SetKeyboardProvider(fe)
@@ -88,13 +91,13 @@ func main() {
 		case "clearkeys":
 			fe.clearKeyQueue()
 
-		//Screen related commands
+		// Screen related commands
 		case "text":
 			fmt.Print(izapple2.DumpTextModeAnsi(a))
 
 		// Old:
 		case "png":
-			err := screen.SaveSnapshot(a, screen.ScreenModeNTSC, "snapshot.png")
+			err := screen.SaveSnapshot(a.GetVideoSource(), screen.ScreenModeNTSC, "snapshot.png")
 			if err != nil {
 				fmt.Printf("Error saving screen: %v.\n.", err)
 			} else {
@@ -102,7 +105,7 @@ func main() {
 			}
 
 		case "pngm":
-			err := screen.SaveSnapshot(a, screen.ScreenModePlain, "snapshot.png")
+			err := screen.SaveSnapshot(a.GetVideoSource(), screen.ScreenModePlain, "snapshot.png")
 			if err != nil {
 				fmt.Printf("Error saving screen: %v.\n.", err)
 			} else {
@@ -184,14 +187,14 @@ func SaveGif(a *izapple2.Apple2, filename string) error {
 
 	planned := time.Now()
 	for i := 0; i < frames; i++ {
-		lapse := planned.Sub(time.Now())
+		lapse := time.Until(planned)
 		fmt.Printf("%v\n", lapse)
 		if lapse > 0 {
 			time.Sleep(lapse)
 		}
 
 		fmt.Printf("%v\n", time.Now())
-		img := screen.SnapshotPaletted(a, screen.ScreenModeNTSC)
+		img := screen.SnapshotPaletted(a.GetVideoSource(), screen.ScreenModeNTSC)
 		animation.Image = append(animation.Image, img)
 		animation.Delay = append(animation.Delay, delayHundredsS)
 

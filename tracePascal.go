@@ -12,11 +12,14 @@ const (
 	pascalJvabfoldH uint16 = 0x00ed // Points to the BIOS entry points
 )
 
-func newTracePascal(a *Apple2) *tracePascal {
+func newTracePascal() *tracePascal {
 	var t tracePascal
-	t.a = a
 	t.skipConsole = true
 	return &t
+}
+
+func (t *tracePascal) connect(a *Apple2) {
+	t.a = a
 }
 
 /*
@@ -28,6 +31,10 @@ See:
 Experimental. Not sure the paramters for DREAD and DWRITE are correct.
 */
 func (t *tracePascal) inspect() {
+	if t.a.dmaActive {
+		return
+	}
+
 	bios := uint16(t.a.mmu.physicalMainRAM.peek(pascalJvabfoldL)) +
 		uint16(t.a.mmu.physicalMainRAM.peek(pascalJvabfoldH))<<8
 	pc, _ := t.a.cpu.GetPCAndSP()

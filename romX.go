@@ -49,10 +49,10 @@ const (
 	romXPlusSetTextBankBaseAddress   = uint16(0xcfd0)
 
 	// Unknown
-	//romXFirmwareMark0Address = uint16(0xdffe)
-	//romXFirmwareMark0Value   = uint8(0x4a)
-	//romXFirmwareMark1Address = uint16(0xdfff)
-	//romXFirmwareMark1Value   = uint8(0xcd)
+	// romXFirmwareMark0Address = uint16(0xdffe)
+	// romXFirmwareMark0Value   = uint8(0x4a)
+	// romXFirmwareMark1Address = uint16(0xdfff)
+	// romXFirmwareMark1Value   = uint8(0xcd)
 
 	romXceSelectTempBank  = uint16(0xf850)
 	romXceSelectMainBank  = uint16(0xf851)
@@ -74,10 +74,10 @@ const (
 	*/
 )
 
-func newRomX(a *Apple2, memory iz6502.Memory) (*romX, error) {
+func newRomX(a *Apple2) (*romX, error) {
 	var rx romX
 	rx.a = a
-	rx.memory = memory
+	rx.memory = a.mmu
 	rx.systemBank = 1
 	rx.mainBank = 1
 	rx.tempBank = 1
@@ -91,6 +91,8 @@ func newRomX(a *Apple2, memory iz6502.Memory) (*romX, error) {
 		}
 	}
 
+	// Intercept all memory accesses
+	a.cpu.SetMemory(&rx)
 	return &rx, nil
 }
 
@@ -192,4 +194,12 @@ func (rx *romX) interceptAccess(address uint16) (bool, uint8) {
 	}
 
 	return false, 0
+}
+
+func setupRomX(a *Apple2) error {
+	_, err := newRomX(a)
+	if err != nil {
+		return err
+	}
+	return nil
 }

@@ -6,14 +6,13 @@ import (
 	"image"
 	"image/color"
 	"image/png"
-	"io/ioutil"
 	"os"
 	"strings"
 )
 
 // TestScenario is the computer video state
 type TestScenario struct {
-	VideoMode     uint16     `json:"mode"`
+	VideoMode     uint32     `json:"mode"`
 	VideoModeName string     `json:"name"`
 	ScreenModes   []int      `json:"screens"`
 	TextPages     [4][]uint8 `json:"text"`
@@ -58,7 +57,7 @@ func cloneSlice(src []uint8) []uint8 {
 }
 
 func loadTestScenario(filename string) (*TestScenario, error) {
-	bytes, err := ioutil.ReadFile(filename)
+	bytes, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +78,7 @@ func (ts *TestScenario) save(dir string) (string, error) {
 	}
 
 	pattern := fmt.Sprintf("%v_*.json", strings.ToLower(ts.VideoModeName))
-	file, err := ioutil.TempFile(dir, pattern)
+	file, err := os.CreateTemp(dir, pattern)
 	if err != nil {
 		return "", err
 	}
@@ -90,7 +89,7 @@ func (ts *TestScenario) save(dir string) (string, error) {
 }
 
 // GetCurrentVideoMode returns the active video mode
-func (ts *TestScenario) GetCurrentVideoMode() uint16 {
+func (ts *TestScenario) GetCurrentVideoMode() uint32 {
 	return ts.VideoMode
 }
 
@@ -133,6 +132,11 @@ func (ts *TestScenario) GetSuperVideoMemory() []uint8 {
 // GetCardImage returns an image provided by a card, like the videx card
 func (ts *TestScenario) GetCardImage(light color.Color) *image.RGBA {
 	return nil
+}
+
+// SupportsLowercase returns true if the video source supports lowercase
+func (ts *TestScenario) SupportsLowercase() bool {
+	return true
 }
 
 func buildImageName(name string, screenMode int, altSet bool) string {

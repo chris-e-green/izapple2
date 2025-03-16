@@ -14,7 +14,10 @@ import (
 )
 
 func main() {
-	a := izapple2.MainApple()
+	a, err := izapple2.CreateConfiguredApple()
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+	}
 	if a != nil {
 		if a.IsProfiling() {
 			// See the log with:
@@ -81,13 +84,13 @@ func sdlRun(a *izapple2.Apple2) {
 	}
 	window.SetResizable(true)
 
-	defer func(window *sdl.Window) {
-		_ = window.Destroy()
-	}(window)
-	defer func(renderer *sdl.Renderer) {
-		_ = renderer.Destroy()
-	}(renderer)
-	window.SetTitle("iz-" + a.Name)
+	defer window.Destroy()
+	defer renderer.Destroy()
+
+	title := "iz-" + a.Name + " (F1 for help)"
+	window.SetTitle(title)
+
+	sdl.SetHint(sdl.HINT_RENDER_SCALE_QUALITY, "best")
 
 	wx, wy := window.GetPosition()
 	toolWin.SetPosition(wx-toolWinWidth, wy)
@@ -98,7 +101,7 @@ func sdlRun(a *izapple2.Apple2) {
 	s.start()
 	a.SetSpeakerProvider(s)
 
-	j := newSDLJoysticks(true)
+	j := newSDLJoysticks(!a.UsesMouse())
 	a.SetJoysticksProvider(j)
 
 	m := newSDLMouse()
@@ -145,23 +148,27 @@ func sdlRun(a *izapple2.Apple2) {
 
 		if paused != a.IsPaused() {
 			if a.IsPaused() {
-				window.SetTitle("iz-" + a.Name + " - PAUSED!")
+				window.SetTitle(title + " - PAUSED!")
 			} else {
-				window.SetTitle("iz-" + a.Name)
+				window.SetTitle(title)
 			}
 			paused = a.IsPaused()
 		}
 
 		if !a.IsPaused() {
 			var img *image.RGBA
-			if kp.showCharGen {
-				img = screen.SnapshotCharacterGenerator(a, kp.showAltText)
-				window.SetTitle(fmt.Sprintf("%v character map", a.Name))
+			vs := a.GetVideoSource()
+			if kp.showHelp {
+				img = screen.SnapshotMessageGenerator(vs, helpMessage)
+			} else if kp.showCharGen {
+				cgPage, cgPages := a.GetCgPageInfo()
+				img = screen.SnapshotCharacterGenerator(vs, kp.showAltText)
+				window.SetTitle(fmt.Sprintf("%v character map, page %v/%v", a.Name, cgPage+1, cgPages))
 			} else if kp.showPages {
-				img = screen.SnapshotParts(a, kp.screenMode)
-				window.SetTitle(fmt.Sprintf("%v %v %vx%v", a.Name, screen.VideoModeName(a), img.Rect.Dx()/2, img.Rect.Dy()/2))
+				img = screen.SnapshotParts(vs, kp.screenMode)
+				window.SetTitle(fmt.Sprintf("%v %v %vx%v", a.Name, screen.VideoModeName(vs), img.Rect.Dx()/2, img.Rect.Dy()/2))
 			} else {
-				img = screen.Snapshot(a, kp.screenMode)
+				img = screen.Snapshot(vs, kp.screenMode)
 			}
 			if img != nil {
 				surface, err := sdl.CreateRGBSurfaceFrom(unsafe.Pointer(&img.Pix[0]),
@@ -217,3 +224,30 @@ func sdlRun(a *izapple2.Apple2) {
 	}
 
 }
+
+var helpMessage = `
+
+          F1: Show/Hide help
+     Ctrl-F2: Reset
+          F4: Show/Hide CPU trace
+          F5: Fast/Normal speed
+     Ctrl-F5: Show speed
+          F6: Next screen mode
+          F7: Show/Hide pages
+         F10: Next character set
+    Ctrl-F10: Show/Hide character set
+   Shift-F10: Show/Hide alternate text
+         F12: Save screen snapshot
+       Pause: Pause the emulation
+
+  Left alt or option key: Open-Apple
+ Right alt or option key: Closed-Apple
+
+Drop a file on the left or right
+side of the window to load a disk
+
+ Run izapple2 -h for more options
+   https://github.com/ivanizag/izapple2
+`
+
+///////////////////////////////////////

@@ -32,8 +32,27 @@ func isHTTPResource(filename string) bool {
 		strings.HasPrefix(filename, httpsPrefix)
 }
 
+func normalizeFilename(filename string) string {
+	// Remove quotes if surrounded by them
+	if strings.HasPrefix(filename, "\"") && strings.HasSuffix(filename, "\"") {
+		filename = filename[1 : len(filename)-1]
+	}
+
+	// Expand the tilde if prefixed by it
+	if strings.HasPrefix(filename, "~") {
+		home, err := os.UserHomeDir()
+		if err == nil {
+			filename = home + filename[1:]
+		}
+
+	}
+	return filename
+}
+
 // LoadResource loads in memory a file from the filesystem, http or embedded
 func LoadResource(filename string) ([]uint8, bool, error) {
+	filename = normalizeFilename(filename)
+
 	var writeable bool
 	var file io.Reader
 	if isInternalResource(filename) {
@@ -118,4 +137,29 @@ func LoadDiskette(filename string) (storage.Diskette, error) {
 	}
 
 	return storage.MakeDiskette(data, filename, writeable)
+}
+
+// LoadBlockDisk returns a BlockDisk
+func LoadBlockDisk(filename string) (storage.BlockDisk, error) {
+	filename = normalizeFilename(filename)
+
+	// Try to open as a file
+	readOnly := false
+	file, err := os.OpenFile(filename, os.O_RDWR, 0)
+	if os.IsPermission(err) {
+		// Retry in read-only mode
+		readOnly = true
+		file, _ = os.OpenFile(filename, os.O_RDONLY, 0)
+	}
+	if file != nil {
+		return storage.NewBlockDiskFile(file, readOnly)
+	}
+
+	// Load as a resource
+	data, _, err := LoadResource(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	return storage.NewBlockDiskMemory(data)
 }

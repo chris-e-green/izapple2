@@ -35,7 +35,7 @@ func buildToolbar(s *state) *widget.Toolbar {
 		}))
 	tb.Append(widget.NewToolbarAction(
 		theme.NewThemedResource(resourceCameraSvg), func() {
-			err := screen.SaveSnapshot(s.a, s.screenMode, "snapshot.png")
+			err := screen.SaveSnapshot(s.a.GetVideoSource(), s.screenMode, "snapshot.png")
 			if err != nil {
 				s.app.SendNotification(fyne.NewNotification(
 					s.win.Title(),
@@ -52,8 +52,8 @@ func buildToolbar(s *state) *widget.Toolbar {
 			s.a.SetForceCaps(!s.a.IsForceCaps())
 			s.win.SetTitle(s.DefaultTitle())
 		}))
-	//tb.Append(widget.NewToolbarSeparator())
-	//tb.Append(newToolbarDisk("S6D1")
+	// tb.Append(widget.NewToolbarSeparator())
+	// tb.Append(newToolbarDisk("S6D1")
 	tb.Append(widget.NewToolbarSpacer())
 	tb.Append(widget.NewToolbarAction(
 		theme.ViewFullScreenIcon(),

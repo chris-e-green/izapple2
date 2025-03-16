@@ -35,32 +35,52 @@ has one Megabyte or less, reading the high address byte will always return a
 value in the range $F0-FF. The top nybble can be any value  when you write it,
 but it will always be “F” when you read it. If the card has more than one
 Megabyte of RAM, the top nybble will be a meaningful part of the address.
+
+Notes for RAMFactor:
+  - https://github.com/mamedev/mame/blob/master/src/devices/bus/a2bus/a2memexp.cpp
+  - ss 5 is for the ROM page, there are two.
+  - https://ae.applearchives.com/all_apple_iis/ramfactor/
 */
 const (
-	memoryExpansionSize256  = 256 * 1024
-	memoryExpansionSize512  = 512 * 1024
-	memoryExpansionSize768  = 768 * 1024
-	memoryExpansionSize1024 = 1024 * 1024
-	memoryExpansionMask     = 0x000fffff // 10 bits, 1MB
+	memoryExpansionMask = 0x000fffff // 10 bits, 1MB
 )
 
 // CardMemoryExpansion is a Memory Expansion card
 type CardMemoryExpansion struct {
 	cardBase
-	ram   [memoryExpansionSize1024]uint8
+	ram   []uint8
 	index int
 }
 
-// NewCardMemoryExpansion creates a new VidHD card
-func NewCardMemoryExpansion() *CardMemoryExpansion {
-	var c CardMemoryExpansion
-	c.name = "Memory Expansion Card"
-	c.loadRomFromResource("<internal>/MemoryExpansionCard-341-0344a.bin")
+func newCardMemoryExpansionBuilder() *cardBuilder {
+	return &cardBuilder{
+		name:        "Memory Expansion Card",
+		description: "Memory expansion card",
+		defaultParams: &[]paramSpec{
+			{"size", "RAM of the card, can be 256, 512, 768 or 1024", "1024"},
+		},
+		buildFunc: func(params map[string]string) (Card, error) {
+			size, err := paramsGetInt(params, "size")
+			if err != nil {
+				return nil, err
+			}
+			if size != 256 && size != 512 && size != 768 && size != 1024 {
+				return nil, fmt.Errorf("invalid RAM size %v. It must be 256, 512, 768 or 1024", size)
+			}
 
-	return &c
+			var c CardMemoryExpansion
+			c.ram = make([]uint8, size*1024)
+			err = c.loadRomFromResource("<internal>/MemoryExpansionCard-341-0344a.bin", cardRomFull)
+			if err != nil {
+				return nil, err
+			}
+
+			return &c, nil
+		},
+	}
 }
 
-// GetInfo returns smartPort info
+// GetInfo returns card info
 func (c *CardMemoryExpansion) GetInfo() map[string]string {
 	info := make(map[string]string)
 	info["size"] = fmt.Sprintf("%vKB", len(c.ram)/1024)

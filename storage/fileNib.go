@@ -29,6 +29,7 @@ const (
 	//nibBytesPerTrack = 6656
 	nibImageSize     = numberOfTracks * nibBytesPerTrack
 	dskImageSize     = numberOfTracks * numberOfSectors * bytesPerSector
+	d13ImageSize     = numberOfTracks * 13 * bytesPerSector
 	defaultVolumeTag = 254
 	cyclesPerBit     = 4
 )
@@ -58,6 +59,10 @@ func newFileNib(data []uint8) *fileNib {
 
 func isFileDsk(data []uint8) bool {
 	return len(data) == dskImageSize
+}
+
+func isFileD13(data []uint8) bool {
+	return len(data) == d13ImageSize
 }
 
 func newFileDsk(data []uint8, filename string) *fileNib {
@@ -104,6 +109,7 @@ func (f *fileNib) saveTrack(track int) {
 	}
 }
 
+//lint:ignore U1000 This should be done per track
 func (f *fileNib) saveNib(filename string) error {
 	file, err := os.Create(filename)
 	if err != nil {

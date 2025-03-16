@@ -2,6 +2,7 @@ package izapple2
 
 import (
 	"errors"
+	"fmt"
 )
 
 /*
@@ -28,19 +29,16 @@ func charGenColumnsMap2e(column int) int {
 }
 
 const (
-	charGenPageSize2Plus = 2048
-	charGenPageSize2E    = 2048 * 2
+	charGenPageSize2Plus    = 2048
+	charGenPageSize2E       = 2048 * 2
+	charGenPageSizeBasis108 = 1024
 )
 
 // NewCharacterGenerator instantiates a new Character Generator with the rom on the file given
-func newCharacterGenerator(filename string, order charColumnMap, isApple2e bool) (*CharacterGenerator, error) {
+func newCharacterGenerator(filename string, order charColumnMap, pageSize int) (*CharacterGenerator, error) {
 	var cg CharacterGenerator
 	cg.columnMap = order
-	cg.pageSize = charGenPageSize2Plus
-	if isApple2e {
-		cg.pageSize = charGenPageSize2E
-	}
-
+	cg.pageSize = pageSize
 	err := cg.load(filename)
 	if err != nil {
 		return nil, err
@@ -62,9 +60,13 @@ func (cg *CharacterGenerator) load(filename string) error {
 	return nil
 }
 
+func (cg *CharacterGenerator) getPages() int {
+	return len(cg.data) / cg.pageSize
+}
+
 func (cg *CharacterGenerator) setPage(page int) {
 	// Some clones had a switch to change codepage with extra characters
-	pages := len(cg.data) / cg.pageSize
+	pages := cg.getPages()
 	cg.page = page % pages
 }
 
@@ -77,8 +79,39 @@ func (cg *CharacterGenerator) nextPage() {
 }
 
 func (cg *CharacterGenerator) getPixel(char uint8, row int, column int) bool {
-	bits := cg.data[int(char)*8+row+cg.page*cg.pageSize]
+	rowPos := (int(char)*8 + row) % cg.pageSize
+	bits := cg.data[rowPos+cg.page*cg.pageSize]
 	bit := cg.columnMap(column)
 	value := bits >> uint(bit) & 1
 	return value == 1
+}
+
+func setupCharactedGenerator(a *Apple2, board string, charRomFile string) error {
+	var charGenMap charColumnMap
+	initialCharGenPage := 0
+	pageSize := charGenPageSize2Plus
+	switch board {
+	case "2plus":
+		charGenMap = charGenColumnsMap2Plus
+	case "basis108":
+		charGenMap = charGenColumnsMap2Plus
+		pageSize = charGenPageSizeBasis108
+		initialCharGenPage = 2
+	case "2e":
+		charGenMap = charGenColumnsMap2e
+		pageSize = charGenPageSize2E
+	case "base64a":
+		charGenMap = charGenColumnsMapBase64a
+		initialCharGenPage = 1
+	default:
+		return fmt.Errorf("board %s not supported it must be '2plus', '2e', 'base64a', 'basis108", board)
+	}
+
+	cg, err := newCharacterGenerator(charRomFile, charGenMap, pageSize)
+	if err != nil {
+		return err
+	}
+	cg.setPage(initialCharGenPage)
+	a.cg = cg
+	return nil
 }

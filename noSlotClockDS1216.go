@@ -1,6 +1,9 @@
 package izapple2
 
 import (
+	"errors"
+	"fmt"
+	"strconv"
 	"time"
 )
 
@@ -34,14 +37,14 @@ type noSlotClockDS1216 struct {
 }
 
 var nscBitPattern = [64]bool{
-	true, false, true, false, false, false, true, true, //C5
-	false, true, false, true, true, true, false, false, //3A
-	true, true, false, false, false, true, false, true, //A3
-	false, false, true, true, true, false, true, false, //5C
-	true, false, true, false, false, false, true, true, //C5
-	false, true, false, true, true, true, false, false, //3A
-	true, true, false, false, false, true, false, true, //A3
-	false, false, true, true, true, false, true, false, //5C
+	true, false, true, false, false, false, true, true, // C5
+	false, true, false, true, true, true, false, false, // 3A
+	true, true, false, false, false, true, false, true, // A3
+	false, false, true, true, true, false, true, false, // 5C
+	true, false, true, false, false, false, true, true, // C5
+	false, true, false, true, true, true, false, false, // 3A
+	true, true, false, false, false, true, false, true, // A3
+	false, false, true, true, true, false, true, false, // 5C
 }
 
 const (
@@ -50,7 +53,7 @@ const (
 	nscStateEnabled  = uint8(2)
 )
 
-func newNoSlotClockDS1216(a *Apple2, memory memoryHandler) *noSlotClockDS1216 {
+func newNoSlotClockDS1216(_ *Apple2, memory memoryHandler) *noSlotClockDS1216 {
 	var nsc noSlotClockDS1216
 	nsc.memory = memory
 	nsc.state = nscStateDisabled
@@ -138,10 +141,6 @@ func (nsc *noSlotClockDS1216) poke(address uint16, value uint8) {
 	nsc.memory.poke(address, value)
 }
 
-func (nsc *noSlotClockDS1216) setBase(base uint16) {
-	nsc.memory.setBase(base)
-}
-
 func (nsc *noSlotClockDS1216) loadTime() {
 	now := time.Now()
 
@@ -167,7 +166,7 @@ func (nsc *noSlotClockDS1216) loadTime() {
 
 	// Bits 4 and 5 of the day register are used to control the RST and oscillator
 	// functions. These bits are shipped from the factory set to logic 1.
-	register += 0x0 //0x3, but zero on read.
+	register += 0x0 // 0x3, but zero on read.
 	register <<= 4
 	register += uint64(now.Weekday()) + 1
 	register <<= 4
@@ -197,4 +196,23 @@ func (nsc *noSlotClockDS1216) loadTime() {
 	register += centisecond % 10
 
 	nsc.timeCapture = register
+}
+
+func setupNoSlotClock(a *Apple2, arg string) error {
+	if arg == "main" {
+		nsc := newNoSlotClockDS1216(a, a.mmu.physicalROM)
+		a.mmu.physicalROM = nsc
+	} else {
+		slot, err := strconv.ParseUint(arg, 10, 8)
+		if err != nil || slot < 1 || slot > 7 {
+			return errors.New("invalid slot for the no slot clock, use 'none', 'main' or a slot number from 1 to 7")
+		}
+		cardRom := a.mmu.cardsROM[slot]
+		if cardRom == nil {
+			return fmt.Errorf("no ROM available on slot %d to add a no slot clock", slot)
+		}
+		nsc := newNoSlotClockDS1216(a, cardRom)
+		a.mmu.cardsROM[slot] = nsc
+	}
+	return nil
 }

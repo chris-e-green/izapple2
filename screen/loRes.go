@@ -44,7 +44,7 @@ func snapshotLoRes(vs VideoSource, isSecondPage bool, light color.Color) *image.
 }
 
 func snapshotMeRes(vs VideoSource, isSecondPage bool, light color.Color) *image.RGBA {
-	data := getText80FromMemory(vs, isSecondPage)
+	data := getText80FromMemory(vs, isSecondPage, false)
 	return renderGr(data, true /*isMeres*/, light)
 }
 
@@ -74,7 +74,7 @@ func renderGr(data []uint8, isDoubleResMode bool, light color.Color) *image.RGBA
 			if isDoubleResMode && ((c % 2) == 0) {
 				// See "Understanding the Apple II", page 8-44
 				// Even blocks color are rotated left one bit
-				offset = offset + 3 // Equivalent to -1
+				offset += 3 // Equivalent to -1
 			}
 
 			// Insert the pixelWidth pixels required
