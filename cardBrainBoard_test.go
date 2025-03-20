@@ -25,13 +25,13 @@ func TestBrainBoardCardWozaniam(t *testing.T) {
 	at := buildBrainBoardTester(t, "brainboard,switch=up")
 
 	at.terminateCondition = func(a *Apple2) bool {
-		return a.cpu.GetCycles() > 10_000_000
+		return a.GetCycles() > 10_000_000
 	}
 	at.run()
 
-	at.terminateCondition = buildTerminateConditionText(at, "_@_@_@_@_@_@_@_@_@_@_@_@_@_@_@_@_@_@_@_@", false, 100_000)
+	at.terminateCondition = buildTerminateConditionText("_@_@_@_@_@_@_@_@_@_@_@_@_@_@_@_@_@_@_@_@", testTextMode40, 100_000)
 
-	text := at.getText()
+	text := at.getText(testTextMode40)
 	if !strings.Contains(text, "_@_@_@_@_@_@_@_@_@_@_@_@_@_@_@_@_@_@_@_@") {
 		t.Errorf("Expected screen filled with _@_@', got '%s'", text)
 	}
@@ -40,10 +40,10 @@ func TestBrainBoardCardWozaniam(t *testing.T) {
 func TestBrainBoardCardIntegerBasic(t *testing.T) {
 	at := buildBrainBoardTester(t, "brainboard,switch=down")
 
-	at.terminateCondition = buildTerminateConditionText(at, "APPLE ][\n>", false, 1_000_000)
+	at.terminateCondition = buildTerminateConditionText("APPLE ][\n>", testTextMode40, 1_000_000)
 	at.run()
 
-	text := at.getText()
+	text := at.getText(testTextMode40)
 	if !strings.Contains(text, "APPLE ][\n>") {
 		t.Errorf("Expected APPLE ][' and '>', got '%s'", text)
 	}

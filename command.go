@@ -70,21 +70,22 @@ func (a *Apple2) executeCommand(command command) {
 	switch command.getId() {
 	case CommandToggleSpeed:
 		if a.cycleDurationNs == 0 {
-			//fmt.Println("Slow")
+			// fmt.Println("Slow")
 			a.cycleDurationNs = 1000.0 / CPUClockMhz
 		} else {
-			//fmt.Println("Fast")
+			// fmt.Println("Fast")
 			a.cycleDurationNs = 0
 		}
 	case CommandShowSpeed:
-		a.showSpeed = !a.showSpeed
+		fmt.Printf("Freq: %f Mhz\n", a.currentFreqMHz)
 	case CommandDumpDebugInfo:
 		a.dumpDebugInfo()
 	case CommandNextCharGenPage:
 		a.cg.nextPage()
 		fmt.Printf("Chargen page %v\n", a.cg.page)
 	case CommandToggleCPUTrace:
-		a.cpu.SetTrace(!a.cpu.GetTrace())
+		a.cpuTrace = !a.cpuTrace
+		a.cpu.SetTrace(a.cpuTrace)
 	case CommandReset:
 		a.reset()
 	case CommandComplex:

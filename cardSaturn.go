@@ -36,18 +36,11 @@ func (c *CardSaturn) assign(a *Apple2, slot int) {
 	c.altBank = true
 	c.activeBlock = 0
 	a.mmu.initLanguageRAM(saturnBlocks)
+	c.addCardSoftSwitches(func(address uint8, data uint8, write bool) uint8 {
+		c.ssAction(address)
+		return 0
+	}, "SATURN")
 
-	// TODO: use addCardSoftSwitches()
-	for i := uint8(0x0); i <= 0xf; i++ {
-		iCopy := i
-		c.addCardSoftSwitchR(iCopy, func() uint8 {
-			c.ssAction(iCopy)
-			return 0
-		}, "SATURNR")
-		c.addCardSoftSwitchW(iCopy, func(uint8) {
-			c.ssAction(iCopy)
-		}, "SATURNW")
-	}
 	c.cardBase.assign(a, slot)
 	c.applyState()
 }
@@ -70,7 +63,7 @@ func (c *CardSaturn) ssAction(ss uint8) {
 		c.readState = false
 		c.writeState = lcWriteDisabled
 	case 3:
-		//RAM read, RAM write
+		// RAM read, RAM write
 		c.altBank = false
 		c.readState = true
 		c.writeState++
@@ -98,7 +91,7 @@ func (c *CardSaturn) ssAction(ss uint8) {
 		c.readState = false
 		c.writeState = lcWriteDisabled
 	case 11:
-		//RAM read, RAM write
+		// RAM read, RAM write
 		c.altBank = true
 		c.readState = true
 		c.writeState++

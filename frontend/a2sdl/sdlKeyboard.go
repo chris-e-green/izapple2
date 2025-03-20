@@ -108,11 +108,7 @@ func (k *sdlKeyboard) putKey(keyEvent *sdl.KeyboardEvent) {
 			k.a.SendCommand(izapple2.CommandToggleSpeed)
 		}
 	case sdl.K_F6:
-		if k.screenMode == screen.ScreenModeNTSC {
-			k.screenMode = screen.ScreenModeGreen
-		} else {
-			k.screenMode = screen.ScreenModeNTSC
-		}
+		k.screenMode = screen.NextScreenMode(k.screenMode)
 	case sdl.K_F7:
 		k.showPages = !k.showPages
 	case sdl.K_F9:
@@ -129,9 +125,9 @@ func (k *sdlKeyboard) putKey(keyEvent *sdl.KeyboardEvent) {
 		fallthrough
 	case sdl.K_PRINTSCREEN:
 		if ctrl {
-			screen.AddScenario(k.a, "../../screen/test_resources/")
+			screen.AddScenario(k.a.GetVideoSource(), "../../screen/test_resources/")
 		} else {
-			err := screen.SaveSnapshot(k.a, screen.ScreenModeNTSC, "snapshot.png")
+			err := screen.SaveSnapshot(k.a.GetVideoSource(), screen.ScreenModeNTSC, "snapshot.png")
 			if err != nil {
 				fmt.Printf("Error saving snapshoot: %v.\n.", err)
 			} else {

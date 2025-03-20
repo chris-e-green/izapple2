@@ -9,6 +9,7 @@ Portable emulator of an Apple II+ or //e. Written in Go.
   - Apple //e with 128Kb of RAM
   - Apple //e enhanced with 128Kb of RAM
   - Base64A clone with 48Kb of base RAM and paged ROM
+  - Basis 108 clone (partial)
 - Storage
   - 16 Sector 5 1/4 diskettes. Uncompressed or compressed witth gzip or zip. Supported formats:
     - NIB (read only)
@@ -31,12 +32,14 @@ Portable emulator of an Apple II+ or //e. Written in Go.
   - Apple //e 80 columns card with 64Kb extra RAM and optional RGB modes
   - No Slot Clock based on the DS1216
   - Videx Videoterm 80 column card with the Videx Soft Video Switch (Apple ][+ only)
+  - Videx Ultraterm 80 to 160 column card wuth integrated Video Switch
   - SwyftCard (Apple //e only)
   - Brain Board
   - Brain Board II
   - MultiROM card
   - Dan ][ Controller card
   - ProDOS ROM card
+  - Microsoft Z80 Softcard using the [Z80](https://github.com/koron-go/z80) emulation from Koron
 - Useful cards not emulating a real card
   - Bootable SmartPort / ProDOS card with the following smartport devices:
       - Block device (hard disks)
@@ -50,7 +53,9 @@ Portable emulator of an Apple II+ or //e. Written in Go.
 
 - Graphic modes:
   - Text 40 columns
-  - Text 80 columns (Apple //e and Videx VideoTerm)
+  - Text 80 columns Apple //e
+  - Text 80 columns Videx VideoTerm
+  - Text up to 160 columns and 48 lines Videx UltraTerm
   - Low-Resolution graphics
   - Double-Width Low-Resolution graphics (Apple //e only)
   - High-Resolution graphics
@@ -217,6 +222,8 @@ Usage:  izapple2 [file]
     	slot 6 configuration. (default "diskii,disk1=<internal>/dos33.dsk")
   -s7 string
     	slot 7 configuration. (default "empty")
+  -showConfig
+    	show the calculated configuration and exit
   -speed string
     	cpu speed in Mhz, can be 'ntsc', 'pal', 'full' or a decimal nunmber (default "ntsc")
   -trace string
@@ -228,8 +235,15 @@ The available pre-configured models are:
   2enh: Apple //e
   2plus: Apple ][+
   base64a: Base 64A
+  basis108: Basis 108
+  cpm: Apple ][+ with CP/M
+  cpm3: Apple //e with CP/M 3.0
+  cpm65: Apple //e with CPM-65
+  desktop: Apple II DeskTop
   dos32: Apple ][ with 13 sectors disk adapter and DOS 3.2x
+  prodos: Apple //e Prodos
   swyft: swyft
+  ultraterm: Apple ][+ with Videx Ultraterm demo
 
 The available cards are:
   brainboard: Firmware card. It has two ROM banks
@@ -252,16 +266,21 @@ The available cards are:
   softswitchlogger: Card to log softswitch accesses
   swyftcard: Card with the ROM needed to run the Swyftcard word processing system
   thunderclock: Clock card
-  videx: Videx compatible 80 columns card
+  videx: Videx Videoterm compatible 80 columns card
+  videxultraterm: Videx Utraterm compatible 80 columns card
   vidhd: Firmware signature of the VidHD card to trick Total Replay to use the SHR mode
+  z80softcard: Microsoft Z80 SoftCard to run CP/M
 
 The available tracers are:
-  cpm65: Trace CPM65 BDOS calls
+  cpm: Trace CPM BDOS calls
+  cpm65: Trace CPM65 BDOS calls skipping terminal IO
+  cpm65full: Trace CPM65 BDOS calls
   cpu: Trace CPU execution
   mli: Trace ProDOS MLI calls
   mos: Trace MOS calls with Applecorn skipping terminal IO
   mosfull: Trace MOS calls with Applecorn
   panicss: Panic on unimplemented softswitches
+  rom: Trace monitor ROM calls
   ss: Trace sotfswiches calls
   ssreg: Trace sotfswiches registrations
   ucsd: Trace UCSD system calls

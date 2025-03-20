@@ -9,25 +9,25 @@ type memoryManager struct {
 	apple2 *Apple2
 
 	// Main RAM area: 0x0000 to 0xbfff
-	physicalMainRAM *memoryRange // 0x0000 to 0xbfff, Up to 48 Kb
+	physicalMainRAM memoryRangeHandler // 0x0000 to 0xbfff, Up to 48 Kb
 
 	// Slots area: 0xc000 to 0xcfff
-	cardsROM      [8]memoryHandler //0xcs00 to 0xcSff. 256 bytes for each card
+	cardsROM      [8]memoryHandler // 0xcs00 to 0xcSff. 256 bytes for each card
 	cardsROMExtra [8]memoryHandler // 0xc800 to 0xcfff. 2048 bytes for each card
 
 	// Upper area ROM: 0xc000 to 0xffff (or 0xd000 to 0xffff on the II+)
 	physicalROM memoryHandler // 0xc000 (or 0xd000) to 0xffff, 16 (or 12) Kb. Up to four banks
 
 	// Language card upper area RAM: 0xd000 to 0xffff. One bank for regular LC cards, up to 8 with Saturn
-	physicalLangRAM    []*memoryRange // 0xd000 to 0xffff, 12KB. Up to 8 banks.
-	physicalLangAltRAM []*memoryRange // 0xd000 to 0xdfff, 4KB. Up to 8 banks.
+	physicalLangRAM    []memoryHandler // 0xd000 to 0xffff, 12KB. Up to 8 banks.
+	physicalLangAltRAM []memoryHandler // 0xd000 to 0xdfff, 4KB. Up to 8 banks.
 
 	// Extended RAM: 0x0000 to 0xffff (with 4Kb moved from 0xc000 to 0xd000 alt). One bank for extended Apple 2e card, up to 256 with RamWorks
-	physicalExtRAM    []*memoryRange // 0x0000 to 0xffff. 60Kb, 0xc000 to 0xcfff not used. Up to 256 banks
-	physicalExtAltRAM []*memoryRange // 0xd000 to 0xdfff, 4Kb. Up to 256 banks.
+	physicalExtRAM    []memoryRangeHandler // 0x0000 to 0xffff. 60Kb, 0xc000 to 0xcfff not used. Up to 256 banks
+	physicalExtAltRAM []memoryHandler      // 0xd000 to 0xdfff, 4Kb. Up to 256 banks.
 
 	// Configuration switches, Language cards
-	lcSelectedBlock uint8 // Language card block selected. Usually, allways 0. But Saturn has 8
+	lcSelectedBlock uint8 // Language card block selected. Usually, always 0. But Saturn has 8
 	lcActiveRead    bool  // Upper RAM active for read
 	lcActiveWrite   bool  // Upper RAM active for write
 	lcAltBank       bool  // Alternate
@@ -70,13 +70,15 @@ type memoryHandler interface {
 	poke(uint16, uint8)
 }
 
+type memoryRangeHandler interface {
+	memoryHandler
+	subRange(a, b uint16) []uint8
+}
+
 func newMemoryManager(a *Apple2) *memoryManager {
 	var mmu memoryManager
 	mmu.apple2 = a
-	mmu.physicalMainRAM = newMemoryRange(0, make([]uint8, 0xc000), "Main RAM")
-
 	mmu.slotC3ROMActive = true // For II+, this is the default behaviour
-
 	return &mmu
 }
 
@@ -147,7 +149,7 @@ func (mmu *memoryManager) getPhysicalMainRAM(ext bool) memoryHandler {
 	return mmu.physicalMainRAM
 }
 
-func (mmu *memoryManager) getVideoRAM(ext bool) *memoryRange {
+func (mmu *memoryManager) getVideoRAM(ext bool) memoryRangeHandler {
 	if ext && mmu.hasExtendedRAM() {
 		// The video memory uses the first extended RAM block, even with RAMWorks
 		return mmu.physicalExtRAM[0]
@@ -236,12 +238,12 @@ func (mmu *memoryManager) peekWord(address uint16) uint16 {
 func (mmu *memoryManager) Peek(address uint16) uint8 {
 	mh := mmu.accessRead(address)
 	if mh == nil {
-		return 0xf4 // Or some random number
+		return uint8(address) // Or some random number
 	}
 	value := mh.peek(address)
-	//if address >= 0xc400 && address < 0xc500 {
-	//	fmt.Printf("[MMU] Peek at %04x: %02x\n", address, value)
-	//}
+	// if address >= 0xc400 && address < 0xc500 {
+	//	 fmt.Printf("[MMU] Peek at %04x: %02x\n", address, value)
+	// }
 
 	return value
 }
@@ -266,9 +268,9 @@ func (mmu *memoryManager) PeekCode(address uint16) uint8 {
 	}
 
 	value := mh.peek(address)
-	//if address >= 0xc400 && address < 0xc500 {
-	//	fmt.Printf("[MMU] PeekCode at %04x: %02x\n", address, value)
-	//}
+	// if address >= 0xc400 && address < 0xc500 {
+	//	 fmt.Printf("[MMU] PeekCode at %04x: %02x\n", address, value)
+	// }
 
 	return value
 }
@@ -286,9 +288,9 @@ func (mmu *memoryManager) Poke(address uint16, value uint8) {
 		mh.poke(address, value)
 	}
 
-	//if address >= 0x0036 && address <= 0x0039 {
-	//	fmt.Printf("[MMU] Poke at %04x: %02x\n", address, value)
-	//}
+	// if address >= 0x0036 && address <= 0x0039 {
+	// 	fmt.Printf("[MMU] Poke at %04x: %02x\n", address, value)
+	// }
 }
 
 // Memory initialization
@@ -302,18 +304,27 @@ func (mmu *memoryManager) setCardROMExtra(slot int, mh memoryHandler) {
 
 func (mmu *memoryManager) initLanguageRAM(groups uint8) {
 	// Apple II+ language card or Saturn (up to 8 groups)
-	mmu.physicalLangRAM = make([]*memoryRange, groups)
-	mmu.physicalLangAltRAM = make([]*memoryRange, groups)
+	mmu.physicalLangRAM = make([]memoryHandler, groups)
+	mmu.physicalLangAltRAM = make([]memoryHandler, groups)
 	for i := uint8(0); i < groups; i++ {
 		mmu.physicalLangRAM[i] = newMemoryRange(0xd000, make([]uint8, 0x3000), fmt.Sprintf("LC RAM block %v", i))
 		mmu.physicalLangAltRAM[i] = newMemoryRange(0xd000, make([]uint8, 0x1000), fmt.Sprintf("LC RAM Alt block %v", i))
 	}
 }
 
+func (mmu *memoryManager) initMainRAM() {
+	// Apple II+ main RAM
+	mmu.physicalMainRAM = newMemoryRange(0, make([]uint8, 0xc000), "Main RAM")
+}
+
+func (mmu *memoryManager) initCustomRAM(customRam memoryRangeHandler) {
+	mmu.physicalMainRAM = customRam
+}
+
 func (mmu *memoryManager) initExtendedRAM(groups int) {
 	// Apple IIe 80 col card with 64Kb style RAM or RAMWorks (up to 256 banks)
-	mmu.physicalExtRAM = make([]*memoryRange, groups)
-	mmu.physicalExtAltRAM = make([]*memoryRange, groups)
+	mmu.physicalExtRAM = make([]memoryRangeHandler, groups)
+	mmu.physicalExtAltRAM = make([]memoryHandler, groups)
 	for i := 0; i < groups; i++ {
 		mmu.physicalExtRAM[i] = newMemoryRange(0, make([]uint8, 0x10000), fmt.Sprintf("Extra RAM block %v", i))
 		mmu.physicalExtAltRAM[i] = newMemoryRange(0xd000, make([]uint8, 0x1000), fmt.Sprintf("Extra RAM Alt block %v", i))
@@ -328,7 +339,7 @@ func (mmu *memoryManager) setLanguageRAM(readActive bool, writeActive bool, altB
 }
 
 func (mmu *memoryManager) setLanguageRAMActiveBlock(block uint8) {
-	block = block % uint8(len(mmu.physicalLangRAM))
+	block %= uint8(len(mmu.physicalLangRAM))
 	mmu.lcSelectedBlock = block
 }
 

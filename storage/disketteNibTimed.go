@@ -1,5 +1,6 @@
 package storage
 
+//lint:ignore U1000 This is an experiment
 type disketteNibTimed struct {
 	nib     *fileNib
 	cycleOn uint64 // Cycle when the disk was last turned on
@@ -31,7 +32,7 @@ func (d *disketteNibTimed) Read(quarterTrack int, cycle uint64) uint8 {
 	}
 	value := track[bytePosition]
 	value >>= shift
-	//fmt.Printf("%v, %v, %v, %x\n", bitPosition, shift, bytePosition, uint8(value))
+	// fmt.Printf("%v, %v, %v, %x\n", bitPosition, shift, bytePosition, uint8(value))
 	return value
 }
 
@@ -40,6 +41,6 @@ func (d *disketteNibTimed) Write(quarterTrack int, value uint8, _ uint64) {
 }
 
 func (d *disketteNibTimed) Is13Sectors() bool {
-	// It amy be 13 sectors but we don't know
+	// It may be 13 sectors but we don't know
 	return false
 }

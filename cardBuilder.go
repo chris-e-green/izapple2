@@ -29,6 +29,7 @@ var commonParams = []paramSpec{
 	{"trace", "Enable debug messages", "false"},
 	{"tracess", "Trace softswitches", "false"},
 	{"panicss", "Panic on unimplemented softswitches", "false"},
+	{"tracemem", "Trace slot addressing accesses", "false"},
 }
 
 var cardFactory map[string]*cardBuilder
@@ -54,13 +55,15 @@ func getCardFactory() map[string]*cardBuilder {
 	cardFactory["parallel"] = newCardParallelPrinterBuilder()
 	cardFactory["prodosromdrive"] = newCardProDOSRomDriveBuilder()
 	cardFactory["prodosromcard3"] = newCardProDOSRomCard3Builder()
-	//cardFactory["prodosnvramdrive"] = newCardProDOSNVRAMDriveBuilder()
+	// cardFactory["prodosnvramdrive"] = newCardProDOSNVRAMDriveBuilder()
 	cardFactory["saturn"] = newCardSaturnBuilder()
 	cardFactory["smartport"] = newCardSmartPortStorageBuilder()
 	cardFactory["swyftcard"] = newCardSwyftBuilder()
 	cardFactory["thunderclock"] = newCardThunderClockPlusBuilder()
-	cardFactory["videx"] = newCardVidexBuilder()
+	cardFactory["videx"] = newCardVidexVideotermBuilder()
+	cardFactory["videxultraterm"] = newCardVidexUltratermBuilder()
 	cardFactory["vidhd"] = newCardVidHDBuilder()
+	cardFactory["z80softcard"] = newCardZ80SoftCardBuilder()
 	return cardFactory
 }
 
@@ -133,10 +136,12 @@ func setupCard(a *Apple2, slot int, paramString string) (Card, error) {
 		a.io.panicNotImplementedSlot(slot)
 	}
 
-	debug := paramsGetBool(finalParams, "trace")
+	card.configure(
+		builder.name,
+		paramsGetBool(finalParams, "trace"),
+		paramsGetBool(finalParams, "tracemem"),
+	)
 
-	card.setName(builder.name)
-	card.setDebug(debug)
 	card.assign(a, slot)
 	a.cards[slot] = card
 	return card, err

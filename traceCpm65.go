@@ -15,7 +15,8 @@ type traceCpm65 struct {
 }
 
 const (
-	cpm65BdosEntrypoint uint16 = 0x0804 // start-3, not really sure about this
+	cpm65BdosEntrypoint uint16 = 0xeb8f // TODO: find the correct address dinamically
+	cpm65BiosEntrypoint uint16 = 0xfdce // TODO: find the correct address dinamically
 )
 
 func newTraceCpm65(skipConsole bool) *traceCpm65 {
@@ -29,6 +30,10 @@ func (t *traceCpm65) connect(a *Apple2) {
 }
 
 func (t *traceCpm65) inspect() {
+	if t.a.dmaActive {
+		return
+	}
+
 	pc, _ := t.a.cpu.GetPCAndSP()
 	if pc == cpm65BdosEntrypoint {
 		regA, regX, regY, _ := t.a.cpu.GetAXYP()
@@ -36,15 +41,26 @@ func (t *traceCpm65) inspect() {
 		switch regY {
 		case 2: // CONSOLE_OUTPUT
 			if !t.skipConsole {
-				fmt.Printf("CPM65 BDOS call $%02x:%s from $%04x with \"%c\"\n", regY, bdosCodeToName(regY), pc, regA)
+				fmt.Printf("CPM65 BDOS call %02v:%s with \"%c\"\n", regY, bdos65CodeToName(regY), regA)
 			}
 		case 9: // WRITE_STRING
 			if !t.skipConsole {
-				text := t.getCpmString(param)
-				fmt.Printf("CPM65 BDOS call $%02x:%s from $%04x with \"%s\"\n", regY, bdosCodeToName(regY), pc, text)
+				text := t.getCpm65String(param)
+				fmt.Printf("CPM65 BDOS call %02v:%s with \"%s\"\n", regY, bdos65CodeToName(regY), text)
 			}
 		default:
-			fmt.Printf("CPM65 BDOS call $%02x:%s from $%04x\n", regY, bdosCodeToName(regY), pc)
+			fmt.Printf("CPM65 BDOS call %02v:%s($%04x)\n", regY, bdos65CodeToName(regY), param)
+		}
+	}
+
+	if pc == cpm65BiosEntrypoint {
+		regA, regX, regY, _ := t.a.cpu.GetAXYP()
+		param := uint16(regX)<<8 | uint16(regA)
+		if regY > 2 /*CONOUT*/ || !t.skipConsole {
+			switch regY {
+			default:
+				fmt.Printf("CPM65 BIOS call %02v:%s($%04x)\n", regY, bios65CodeToName(regY), param)
+			}
 		}
 	}
 }
@@ -93,20 +109,47 @@ var cpm65BdosNames = []string{
 	"WRITE_RANDOM_FILLED",    // 40
 	"GETZP",                  // 41
 	"GETTPA",                 // 42
+	"PARSE_FILENAME",         // 43
 }
 
-func bdosCodeToName(code uint8) string {
+var cpm65BiosNames = []string{
+	"CONST",    // 0
+	"CONIN",    // 1
+	"CONOUT",   // 2
+	"SELDSK",   // 3
+	"SETSEC",   // 4
+	"SETDMA",   // 5
+	"READ",     // 6
+	"WRITE",    // 7
+	"RELOCATE", // 8
+	"GETTPA",   // 9
+	"SETTPA",   // 10
+	"GETZP",    // 11
+	"SETZP",    // 12
+	"SETBANK",  // 13
+	"ADDDRV",   // 14
+	"FINDDRV",  // 15
+}
+
+func bdos65CodeToName(code uint8) string {
 	if code < uint8(len(cpm65BdosNames)) {
 		return cpm65BdosNames[code]
 	}
 	return fmt.Sprintf("BDOS_%d", code)
 }
 
-func (t *traceCpm65) getCpmString(address uint16) string {
+func bios65CodeToName(code uint8) string {
+	if code < uint8(len(cpm65BiosNames)) {
+		return cpm65BiosNames[code]
+	}
+	return fmt.Sprintf("BIOS_%d", code)
+}
+
+func (t *traceCpm65) getCpm65String(address uint16) string {
 	s := ""
 	for {
 		ch := t.a.mmu.Peek(address)
-		if ch == '$' {
+		if ch == '$' || ch == 0 {
 			break
 		}
 		s += string(ch)

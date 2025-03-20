@@ -6,33 +6,30 @@ import (
 
 // Card represents an Apple II card to be inserted in a slot
 type Card interface {
+	configure(name string, trace bool, traceMemory bool)
 	loadRom(data []uint8, layout cardRomLayout) error
 	assign(a *Apple2, slot int)
 	reset()
+	runDMACycle()
 
-	setName(name string)
-	setDebug(debug bool)
 	GetName() string
 	GetInfo() map[string]string
 }
 
 type cardBase struct {
-	a       *Apple2
-	name    string
-	trace   bool
-	romCsxx *memoryRangeROM
-	romC8xx memoryHandler
-	romCxxx memoryHandler
+	a           *Apple2
+	name        string
+	trace       bool
+	traceMemory bool
+	romCsxx     *memoryRangeROM
+	romC8xx     memoryHandler
+	romCxxx     memoryHandler
 
 	slot     int
 	_ssr     [16]softSwitchR
 	_ssw     [16]softSwitchW
 	_ssrName [16]string
 	_sswName [16]string
-}
-
-func (c *cardBase) setName(name string) {
-	c.name = name
 }
 
 func (c *cardBase) GetName() string {
@@ -43,8 +40,10 @@ func (c *cardBase) GetInfo() map[string]string {
 	return nil
 }
 
-func (c *cardBase) setDebug(debug bool) {
-	c.trace = debug
+func (c *cardBase) configure(name string, trace bool, traceMemory bool) {
+	c.name = name
+	c.trace = trace
+	c.traceMemory = traceMemory
 }
 
 func (c *cardBase) reset() {
@@ -102,7 +101,7 @@ func (c *cardBase) loadRom(data []uint8, layout cardRomLayout) error {
 		if len(data) == 0x400 {
 			// The file has C800 to CBFF for ROM
 			// The 256 bytes in Cx00 are copied from the last page in C800-CBFF
-			// Used on the Videx 80 columns card
+			// Used on the Videx Videoterm 80 columns card
 			c.romCsxx = newMemoryRangeROM(0, data[0x300:], "Slot ROM")
 			c.romC8xx = newMemoryRangeROM(0xc800, data, "Slot C8 ROM")
 		} else {
@@ -133,14 +132,17 @@ func (c *cardBase) assign(a *Apple2, slot int) {
 		if c.romCsxx != nil {
 			// Relocate to the assigned slot
 			c.romCsxx.setBase(uint16(0xc000 + slot*0x100))
-			a.mmu.setCardROM(slot, c.romCsxx)
+			rom := traceMemory(c.romCsxx, c.name, c.traceMemory)
+			a.mmu.setCardROM(slot, rom)
 		}
 		if c.romC8xx != nil {
-			a.mmu.setCardROMExtra(slot, c.romC8xx)
+			rom := traceMemory(c.romC8xx, c.name, c.traceMemory)
+			a.mmu.setCardROMExtra(slot, rom)
 		}
 		if c.romCxxx != nil {
-			a.mmu.setCardROM(slot, c.romCxxx)
-			a.mmu.setCardROMExtra(slot, c.romCxxx)
+			rom := traceMemory(c.romCxxx, c.name, c.traceMemory)
+			a.mmu.setCardROM(slot, rom)
+			a.mmu.setCardROMExtra(slot, rom)
 		}
 	}
 
@@ -152,6 +154,22 @@ func (c *cardBase) assign(a *Apple2, slot int) {
 			a.io.addSoftSwitchW(uint8(0xC80+slot*0x10+i), c._ssw[i], c._sswName[i])
 		}
 	}
+}
+
+func (c *cardBase) runDMACycle() {
+	// No DMA
+}
+
+func (c *cardBase) activateDMA() {
+	if c.a.dmaActive {
+		panic("DMA chain not supported")
+	}
+	c.a.dmaActive = true
+	c.a.dmaSlot = c.slot
+}
+
+func (c *cardBase) deactivateDMA() {
+	c.a.dmaActive = false
 }
 
 func (c *cardBase) addCardSoftSwitchR(address uint8, ss softSwitchR, name string) {

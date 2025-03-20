@@ -52,7 +52,10 @@ func getTracerFactory() map[string]*traceBuilder {
 	tracerFactory["cpu"] = &traceBuilder{
 		name:        "cpu",
 		description: "Trace CPU execution",
-		connectFunc: func(a *Apple2) { a.cpu.SetTrace(true) },
+		connectFunc: func(a *Apple2) {
+			a.cpuTrace = true
+			a.cpu.SetTrace(true)
+		},
 	}
 	tracerFactory["ss"] = &traceBuilder{
 		name:        "ss",
@@ -71,12 +74,27 @@ func getTracerFactory() map[string]*traceBuilder {
 	}
 	tracerFactory["cpm65"] = &traceBuilder{
 		name:            "cpm65",
+		description:     "Trace CPM65 BDOS calls skipping terminal IO",
+		executionTracer: newTraceCpm65(true),
+	}
+	tracerFactory["cpm65full"] = &traceBuilder{
+		name:            "cpm65full",
 		description:     "Trace CPM65 BDOS calls",
 		executionTracer: newTraceCpm65(false),
 	}
-	tracerFactory["monitor"] = &traceBuilder{
-		name:            "monitor",
-		description:     "Trace Monitor calls",
+	tracerFactory["cpm"] = &traceBuilder{
+		name:            "cpm",
+		description:     "Trace CPM BDOS calls skipping terminal IO",
+		executionTracer: newTraceCpm(true),
+	}
+	tracerFactory["cpm"] = &traceBuilder{
+		name:            "cpm",
+		description:     "Trace CPM BDOS calls",
+		executionTracer: newTraceCpm(false),
+	}
+	tracerFactory["rom"] = &traceBuilder{
+		name:            "rom",
+		description:     "Trace monitor ROM calls",
 		executionTracer: newTraceMonitor(),
 	}
 	return tracerFactory
@@ -106,6 +124,8 @@ func setupTracers(a *Apple2, paramString string) error {
 		if builder.executionTracer != nil {
 			a.addTracer(builder.executionTracer)
 		}
+
+		fmt.Printf("Tracer %s enabled\n", builder.name)
 	}
 	return nil
 }

@@ -39,6 +39,8 @@ Usage:  izapple2 [file]
     	slot 6 configuration. (default "diskii,disk1=<internal>/dos33.dsk")
   -s7 string
     	slot 7 configuration. (default "empty")
+  -showConfig
+    	show the calculated configuration and exit
   -speed string
     	cpu speed in Mhz, can be 'ntsc', 'pal', 'full' or a decimal nunmber (default "ntsc")
   -trace string
@@ -50,8 +52,15 @@ The available pre-configured models are:
   2enh: Apple //e
   2plus: Apple ][+
   base64a: Base 64A
+  basis108: Basis 108
+  cpm: Apple ][+ with CP/M
+  cpm3: Apple //e with CP/M 3.0
+  cpm65: Apple //e with CPM-65
+  desktop: Apple II DeskTop
   dos32: Apple ][ with 13 sectors disk adapter and DOS 3.2x
+  prodos: Apple //e Prodos
   swyft: swyft
+  ultraterm: Apple ][+ with Videx Ultraterm demo
 
 The available cards are:
   brainboard: Firmware card. It has two ROM banks
@@ -74,16 +83,21 @@ The available cards are:
   softswitchlogger: Card to log softswitch accesses
   swyftcard: Card with the ROM needed to run the Swyftcard word processing system
   thunderclock: Clock card
-  videx: Videx compatible 80 columns card
+  videx: Videx Videoterm compatible 80 columns card
+  videxultraterm: Videx Utraterm compatible 80 columns card
   vidhd: Firmware signature of the VidHD card to trick Total Replay to use the SHR mode
+  z80softcard: Microsoft Z80 SoftCard to run CP/M
 
 The available tracers are:
-  cpm65: Trace CPM65 BDOS calls
+  cpm: Trace CPM BDOS calls
+  cpm65: Trace CPM65 BDOS calls skipping terminal IO
+  cpm65full: Trace CPM65 BDOS calls
   cpu: Trace CPU execution
   mli: Trace ProDOS MLI calls
   mos: Trace MOS calls with Applecorn skipping terminal IO
   mosfull: Trace MOS calls with Applecorn
   panicss: Panic on unimplemented softswitches
+  rom: Trace monitor ROM calls
   ss: Trace sotfswiches calls
   ssreg: Trace sotfswiches registrations
   ucsd: Trace UCSD system calls

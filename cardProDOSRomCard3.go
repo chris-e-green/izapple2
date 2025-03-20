@@ -52,10 +52,11 @@ func newCardProDOSRomCard3Builder() *cardBuilder {
 	}
 }
 
+//lint:ignore U1000 this is used to write debug code
 func newCardProDOSNVRAMDriveBuilder() *cardBuilder {
 	return &cardBuilder{
 		name:        "ProDOS 4MB NVRAM DRive",
-		description: "A bootable 4 MB NVRAM card by Ralle Palaveev",
+		description: "A bootable 4 MB NVRAM card by Ralle Palaveev, WIP",
 		defaultParams: &[]paramSpec{
 			{"image", "ROM image with the ProDOS volume", ""},
 		},
@@ -113,7 +114,7 @@ func (c *CardProDOSRomCard3) translateAddress(address uint16) int {
 	offset := address - 0xC800
 	pageAddress := int(c.bank&0x7FF) * 0x0800
 
-	//fmt.Printf("CardProDOSRomCard3.translateAddress: address=%04X, bank=%04X, offset=%04X, pageAddress=%08X\n", address, c.bank, offset, pageAddress)
+	// fmt.Printf("CardProDOSRomCard3.translateAddress: address=%04X, bank=%04X, offset=%04X, pageAddress=%08X\n", address, c.bank, offset, pageAddress)
 
 	return pageAddress + int(offset)
 }
