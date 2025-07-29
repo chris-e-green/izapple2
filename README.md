@@ -241,9 +241,11 @@ The available pre-configured models are:
   cpm65: Apple //e with CPM-65
   desktop: Apple II DeskTop
   dos32: Apple ][ with 13 sectors disk adapter and DOS 3.2x
+  pascal: Apple //e with Apple Pascal 1.3
   prodos: Apple //e Prodos
   swyft: swyft
   ultraterm: Apple ][+ with Videx Ultraterm demo
+Custom models may be specified by filename.  Use 'IZAPPLE2_CUSTOM_MODEL' to set default location.
 
 The available cards are:
   brainboard: Firmware card. It has two ROM banks
@@ -259,6 +261,7 @@ The available cards are:
   mouse: Mouse card implementation, does not emulate a real card, only the firmware behaviour
   multirom: Multiple Image ROM card
   parallel: Card to dump to a file what would be printed to a parallel printer
+  prodosblock: ProDOS block device interface card
   prodosromcard3: A bootable 4 MB ROM card by Ralle Palaveev
   prodosromdrive: A bootable 1 MB solid state disk by Terence Boldt
   saturn: RAM card with 128Kb, it's like 8 language cards

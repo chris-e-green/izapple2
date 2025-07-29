@@ -2,9 +2,12 @@ package izapple2
 
 import (
 	"embed"
+	"errors"
 	"flag"
 	"fmt"
 	"maps"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"slices"
@@ -103,20 +106,9 @@ func loadConfigurationModelsAndDefault() (*configurationModels, *configuration, 
 			if err != nil {
 				return nil, nil, err
 			}
-			lines := strings.Split(string(content), "\n")
-			config := newConfiguration()
-			for iLine, line := range lines {
-				line = strings.TrimSpace(line)
-				if line == "" || strings.HasPrefix(line, "#") {
-					continue
-				}
-				colonPos := strings.Index(line, ":")
-				if colonPos < 0 {
-					return nil, nil, fmt.Errorf("invalid configuration in %s:%d", file.Name(), iLine)
-				}
-				key := strings.TrimSpace(line[:colonPos])
-				value := strings.TrimSpace(line[colonPos+1:])
-				config.data[key] = value
+			config, err := parseConfiguration(content, file.Name())
+			if err != nil {
+				return nil, nil, err
 			}
 			name_no_ext := file.Name()[:len(file.Name())-len(configSuffix)]
 			models.preconfiguredConfigs[name_no_ext] = config
@@ -130,6 +122,25 @@ func loadConfigurationModelsAndDefault() (*configurationModels, *configuration, 
 	defaultConfig.set(confModel, defaultConfiguration)
 
 	return models, defaultConfig, nil
+}
+
+func parseConfiguration(content []byte, name string) (*configuration, error) {
+	lines := strings.Split(string(content), "\n")
+	config := newConfiguration()
+	for iLine, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		colonPos := strings.Index(line, ":")
+		if colonPos < 0 {
+			return nil, fmt.Errorf("invalid configuration in %s:%d", name, iLine)
+		}
+		key := strings.TrimSpace(line[:colonPos])
+		value := strings.TrimSpace(line[colonPos+1:])
+		config.data[key] = value
+	}
+	return config, nil
 }
 
 func mergeConfigs(base *configuration, addition *configuration) *configuration {
@@ -147,7 +158,23 @@ func (c *configurationModels) get(name string) (*configuration, error) {
 	name = strings.TrimSpace(name)
 	config, ok := c.preconfiguredConfigs[name]
 	if !ok {
-		return nil, fmt.Errorf("configuration %s.cfg not found", name)
+		if filepath.Ext(strings.ToLower(name)) != ".cfg" {
+			name = name + ".cfg"
+		}
+		if _, err := os.Stat(name); errors.Is(err, os.ErrNotExist) {
+			path, exists := os.LookupEnv("IZAPPLE2_CUSTOM_MODEL")
+			if exists {
+				name = filepath.Join(path, name)
+			}
+		}
+		content, err := os.ReadFile(name)
+		if err != nil {
+			return nil, fmt.Errorf("configuration %s not found", name)
+		}
+		config, err = parseConfiguration(content, name)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	parentName, hasParent := config.getHas(confParent)
@@ -239,6 +266,7 @@ func setupFlags(models *configurationModels, configuration *configuration) error
 			config, _ := models.get(model)
 			fmt.Fprintf(out, "  %s: %s\n", model, config.get(confName))
 		}
+		fmt.Fprintf(out, "Custom models may be specified by filename.  Use 'IZAPPLE2_CUSTOM_MODEL' to set default location.\n")
 
 		fmt.Fprintf(out, "\nThe available cards are:\n")
 		for _, card := range availableCards() {
